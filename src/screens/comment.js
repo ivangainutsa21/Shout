@@ -1,24 +1,21 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, KeyboardAvoidingView, Animated, TextInput, View,TouchableOpacity, Text, 
-	ImageBackground, Easing, Keyboard,Image, StatusBar, ListView,
-	Platform,
-	PermissionsAndroid,
-    ToastAndroid,Alert,
+	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, Image, ListView,
+	Platform, PermissionsAndroid, ToastAndroid,Alert,
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
+import {
+	AudioRecorder, AudioUtils
+} from 'react-native-audio';
+import Sound 		from 'react-native-sound';
+import RNFetchBlob 	from 'react-native-fetch-blob'
 
-import RNFetchBlob from 'react-native-fetch-blob'
-import Sound from 'react-native-sound';
-import {AudioRecorder, AudioUtils} from 'react-native-audio';
+import { firebaseApp } 		from '../firebase'
+import srcLoginBackground 	from '../images/postbackground.png';
+import srcAddPost 			from '../images/addpost.png';
 
-import { firebaseApp } from '../firebase'
-
-import srcLoginBackground from '../images/postbackground.png';
-import srcAddPost from '../images/addpost.png';
-
-export default class CommentScreen extends Component {
+export default class Comment extends Component {
 	constructor(props) {
 		super(props);
 		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -539,10 +536,7 @@ export default class CommentScreen extends Component {
 	}
 }
 
-var currnetSound = null;
-const DEVICE_WIDTH = Dimensions.get('window').width;
-const DEVICE_HEIGHT = Dimensions.get('window').height;
-const MARGIN = 40;
+const currnetSound = null;
 
 const styles = StyleSheet.create({
 	container: {
@@ -564,11 +558,5 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		height: 40,
 		width: 40,
-	},
-	text: {
-		color: 'black',
-		backgroundColor: 'transparent',
-		fontSize: 18,
-		fontWeight: 'bold'
 	},
 });

@@ -1,28 +1,22 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, KeyboardAvoidingView, Animated, TextInput, View,TouchableOpacity, Text, 
-	ImageBackground, Easing, Keyboard,Image, StatusBar, ListView,
-	Platform,
-	PermissionsAndroid,
-	ToastAndroid,
-	ActivityIndicator,
+	StyleSheet, TextInput, View, TouchableOpacity, Text, ImageBackground, Image, ListView,
+	Platform,	PermissionsAndroid, ToastAndroid,
 } from 'react-native';
-import ImagePicker from 'react-native-image-picker';
-import { NavigationActions } from 'react-navigation';
-import Sound from 'react-native-sound';
-import {AudioRecorder, AudioUtils} from 'react-native-audio';
-import Spinner from 'react-native-loading-spinner-overlay';
+import { NavigationActions } 		from 'react-navigation';
+import {AudioRecorder, AudioUtils} 	from 'react-native-audio';
+import Sound 		from 'react-native-sound';
+import ImagePicker 	from 'react-native-image-picker';
+import Spinner 		from 'react-native-loading-spinner-overlay';
+import OneSignal 	from 'react-native-onesignal';
 
-import OneSignal from 'react-native-onesignal';
+import { firebaseApp } 		from '../firebase'
+import RNFetchBlob 			from 'react-native-fetch-blob'
+import srcLoginBackground 	from '../images/postbackground.png';
+import srcAddPost 			from '../images/addpost.png';
 
-import { firebaseApp } from '../firebase'
-import RNFetchBlob from 'react-native-fetch-blob'
-
-import srcLoginBackground from '../images/postbackground.png';
-import srcAddPost from '../images/addpost.png';
-
-export default class PostScreen extends Component {
+export default class Post extends Component {
 	constructor(props) {
 		super(props);
 		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -164,8 +158,6 @@ export default class PostScreen extends Component {
 		  await this._stop();
 		}
   
-		// These timeouts are a hacky workaround for some issues with react-native-sound.
-		// See https://github.com/zmxv/react-native-sound/issues/89.
 		setTimeout(() => {
 		  var sound = new Sound(this.state.audioPath, '', (error) => {
 			if (error) {

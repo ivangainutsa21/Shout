@@ -1,8 +1,7 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, KeyboardAvoidingView, Animated, TextInput, View,TouchableOpacity, AppState,
-	Text, ImageBackground, Easing, Keyboard,Image, StatusBar, BackHandler, ToastAndroid,
+	View
 } from 'react-native';
 import { NavigationActions } from 'react-navigation'
 import { firebaseApp } from '../firebase'
@@ -12,25 +11,25 @@ import Spinner from 'react-native-loading-spinner-overlay';
 const resetLogin = NavigationActions.reset({
 	index: 0,
 	actions: [
-	  NavigationActions.navigate({ routeName: 'Login'})
+	  NavigationActions.navigate({ routeName: 'login'})
 	]
-  })
+})
 
-  const resetHome = NavigationActions.reset({
+const resetHome = NavigationActions.reset({
 	index: 0,
 	actions: [
-	  NavigationActions.navigate({ routeName: 'Home'})
+	  NavigationActions.navigate({ routeName: 'home'})
 	]
-  })
-export default class SplashScreen extends Component {
+})
+export default class Splash extends Component {
 	
 	constructor(props) {
-		super(props);
-	
-			this.state = {
-				isLoading: true,	
-			}
+	super(props);
+		this.state = {
+			isLoading: true,	
 		}
+	}
+
 	static navigationOptions = {
 		header: null
 	};
@@ -42,16 +41,13 @@ export default class SplashScreen extends Component {
 			})
 			if (user) {
 				this.props.navigation.dispatch(resetHome);
-				
 			} else {
-                this.props.navigation.dispatch(resetLogin);
+        		this.props.navigation.dispatch(resetLogin);
 			}
 		});
 	}
 
 	render() {
-	
-	const { navigate } = this.props.navigation;
 		return (
 			<View>
 				<Spinner visible={this.state.isLoading} textContent={"Loading..."} textStyle={{color: '#FFF'}} />

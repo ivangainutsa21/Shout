@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, KeyboardAvoidingView, Animated, TextInput, View,TouchableOpacity, Text, ImageBackground, Easing, Keyboard,Image, StatusBar
+	StyleSheet, View,TouchableOpacity, Text, ImageBackground,
 } from 'react-native';
 
 import { firebaseApp } from '../firebase'
@@ -69,54 +69,10 @@ export default class SideMenu extends Component {
 	}
 }
 
-const DEVICE_WIDTH = Dimensions.get('window').width;
-const DEVICE_HEIGHT = Dimensions.get('window').height;
-const MARGIN = 40;
-
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: 'white',
 		width: null,
-	},
-	input: {
-		backgroundColor: 'transparent',
-		width: DEVICE_WIDTH - 100,
-		marginRight: 70,
-		padding: 0,
-		paddingLeft: 10,
-		fontSize: 18,
-		color: 'black',
-		borderBottomColor: 'dimgray',
-		borderBottomWidth: 1,
-	},
-	button: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		marginRight: 70,
-		marginTop: 30,
-	},
-	SignupSection: {
-		width: DEVICE_WIDTH,
-		flexDirection: 'row',
-		justifyContent: 'center',
-		alignItems: 'flex-start',
-	},
-	noAccount: {
-		color: 'dimgray',
-		fontSize: 16,
-		backgroundColor: 'transparent',
-	},
-	signUp: {
-		color: 'black',
-		fontSize: 16,
-		backgroundColor: 'transparent',
-		fontWeight: 'bold'
-	},
-	text: {
-		color: 'black',
-		backgroundColor: 'transparent',
-		fontSize: 18,
-		fontWeight: 'bold'
+		backgroundColor: 'white',
 	},
 });

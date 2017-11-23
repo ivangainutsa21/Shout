@@ -1,18 +1,12 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- * @flow
- */
 
 import React, { Component } from 'react';
 import {
-  StyleSheet,
-  View, TouchableOpacity,Text,
+  StyleSheet, View, TouchableOpacity, Text,
 } from 'react-native';
-
 import OneSignal from 'react-native-onesignal';
-import { firebaseApp } from './src/firebase'
-import Main from './src/screens/Main';
+
+import { firebaseApp } from './src/firebase';
+import RootNavigator from './src/screens/router';
 
 export default class App extends Component<{}> {
 
@@ -54,7 +48,7 @@ export default class App extends Component<{}> {
   render() {
     return (
       <View style={styles.container}>
-		    <Main />
+		    <RootNavigator />
       </View>
     );
   }

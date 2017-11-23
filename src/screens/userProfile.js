@@ -13,7 +13,7 @@ import RNFetchBlob from 'react-native-fetch-blob'
 import srcLoginBackground from '../images/postbackground.png';
 import srcAddPost from '../images/addpost.png';
 
-export default class MyProfile extends Component {
+export default class UserProfile extends Component {
 
 	constructor(props) {
 		super(props);

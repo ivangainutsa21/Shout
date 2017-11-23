@@ -2,19 +2,14 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet,
-	KeyboardAvoidingView,
-	View,
-	ActivityIndicator,
-	TouchableOpacity,
-	ImageBackground,Animated,Text, Easing, TextInput, Image
+	StyleSheet, KeyboardAvoidingView, View, TouchableOpacity, ImageBackground, Text, TextInput, Image
 } from 'react-native';
-import { NavigationActions } from 'react-navigation';
-import { firebaseApp } from '../firebase'
+import { NavigationActions } 	from 'react-navigation';
 
-import srcSignupBackground from '../images/SignupBackground.png';
+import { firebaseApp } 			from '../firebase'
+import srcSignupBackground 		from '../images/SignupBackground.png';
 
-export default class SignupScreen extends Component {
+export default class Signup extends Component {
 	constructor(props) {
 		super(props);
 		this.state = {
@@ -29,7 +24,6 @@ export default class SignupScreen extends Component {
 		this.onSignUp = this.onSignUp.bind(this);
 	}
 
-	
 	static navigationOptions = {
 		header: null
 	};
@@ -68,10 +62,9 @@ export default class SignupScreen extends Component {
 	}
 	
 	render() {
-
-const backAction = NavigationActions.back({
-	key: null,
-  })
+		const backAction = NavigationActions.back({
+			key: null,
+		})
 		return (
 			<ImageBackground style={styles.container} source={srcSignupBackground}>
 				<KeyboardAvoidingView behavior='padding' style={{flex: 1,}}>
@@ -133,8 +126,6 @@ const backAction = NavigationActions.back({
 })
 
 const DEVICE_WIDTH = Dimensions.get('window').width;
-const DEVICE_HEIGHT = Dimensions.get('window').height;
-const MARGIN = 40;
 
 const styles = StyleSheet.create({
 	container: {

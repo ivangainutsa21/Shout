@@ -1,15 +1,14 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, KeyboardAvoidingView, Animated, TextInput, View,TouchableOpacity, Text, ImageBackground, Easing, Keyboard,Image, StatusBar
+	StyleSheet, KeyboardAvoidingView, TextInput, View, TouchableOpacity, Text, ImageBackground, Keyboard, Image,
 } from 'react-native';
-
-import { firebaseApp } from '../firebase'
-
 import { NavigationActions } from 'react-navigation';
-import srcLoginBackground from '../images/LoginBackground.png';
 
-export default class LoginScreen extends Component {
+import { firebaseApp } 		from '../firebase'
+import srcLoginBackground 	from '../images/LoginBackground.png';
+
+export default class Login extends Component {
 	constructor(props) {
 		super(props);
 		this.state = {
@@ -19,9 +18,6 @@ export default class LoginScreen extends Component {
 			email: '',
 			password: '',
 		};
-					
-		this.buttonAnimated = new Animated.Value(0);
-		this.growAnimated = new Animated.Value(0);
 	}
 
 	static navigationOptions = {
@@ -64,7 +60,7 @@ export default class LoginScreen extends Component {
 								if(this.state.email == "admin", this.state.password == "admin"){
 									Keyboard.dismiss();
 									setTimeout(() => {
-										//Actions.adminPage();
+										//go to admin page
 									}, 1000);
 								}
 								else {
@@ -87,7 +83,7 @@ export default class LoginScreen extends Component {
 								<TouchableOpacity
 									onPress = {() => {
 										Keyboard.dismiss();
-										navigate('Signup');
+										navigate('signup');
 									}}>
 									<Text style={styles.signUp}>  Register Now!</Text>
 								</TouchableOpacity>
@@ -104,8 +100,6 @@ const backAction = NavigationActions.back({
 })
 
 const DEVICE_WIDTH = Dimensions.get('window').width;
-const DEVICE_HEIGHT = Dimensions.get('window').height;
-const MARGIN = 40;
 
 const styles = StyleSheet.create({
 	container: {
