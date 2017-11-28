@@ -2,20 +2,22 @@ import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
 	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, Image, ListView,
-	Platform, PermissionsAndroid, ToastAndroid,Alert,
+	Platform, PermissionsAndroid, ToastAndroid,Alert, Keyboard,
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import {
 	AudioRecorder, AudioUtils
 } from 'react-native-audio';
 import Sound 		from 'react-native-sound';
-import RNFetchBlob 	from 'react-native-fetch-blob'
 
-import { firebaseApp } 		from '../firebase'
+import RNFetchBlob 			from 'react-native-fetch-blob'
+import { firebaseApp } 		from '../firebase';
 import srcLoginBackground 	from '../images/postbackground.png';
 import srcAddPost 			from '../images/addpost.png';
+import AudioPlayer 			from './audioPlayer';
+import { connect } 			from "react-redux";
 
-export default class Comment extends Component {
+class Comment extends Component {
 	constructor(props) {
 		super(props);
 		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -25,161 +27,15 @@ export default class Comment extends Component {
 			comment: '',
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 
-			currentTime: 0.0,
-			recording: false,
-			stoppedRecording: false,
-			finished: false,
-			audioPath: AudioUtils.DocumentDirectoryPath + '/shoutRecord.aac',
-			hasPermission: undefined,
 			playing: false,
 			playingRow: undefined,
-			recordingStatus: 'Write your comment!',
 		}
-
 		this.renderRow = this.renderRow.bind(this);
 	}
 
 	static navigationOptions = {
 		header: null
 	};
-
-
-	prepareRecordingPath(audioPath){
-		AudioRecorder.prepareRecordingAtPath(audioPath, {
-			SampleRate: 22050,
-			Channels: 1,
-			AudioQuality: "Low",
-			AudioEncoding: "aac",
-			AudioEncodingBitRate: 32000
-		});
-	  }
-  
-	  _checkPermission() {
-		if (Platform.OS !== 'android') {
-		  return Promise.resolve(true);
-		}
-  
-		const rationale = {
-		  'title': 'Microphone Permission',
-		  'message': 'AudioExample needs access to your microphone so you can record audio.'
-		};
-  
-		return PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, rationale)
-		  .then((result) => {
-			console.log('Permission result:', result);
-			return (result === true || result === PermissionsAndroid.RESULTS.GRANTED);
-		  });
-	  }
-  
-	  _renderButton(title, onPressIn, active, onPressOut) {
-		var style = (active) ? styles.activeButtonText : styles.buttonText;
-  
-		return (
-		  <TouchableHighlight style={styles.button} onPressIn={onPressIn} onPressOut={onPressOut}>
-			<Text style={style}>
-			  {title}
-			</Text>
-		  </TouchableHighlight>
-		);
-	  }
-  
-	  async _pause() {
-		if (!this.state.recording) {
-		  console.warn('Can\'t pause, not recording!');
-		  return;
-		}
-  
-		this.setState({stoppedRecording: true, recording: false});
-  
-		try {
-		  const filePath = await AudioRecorder.pauseRecording();
-  
-		  // Pause is currently equivalent to stop on Android.
-		  if (Platform.OS === 'android') {
-			this._finishRecording(true, filePath);
-		  }
-		} catch (error) {
-		  console.error(error);
-		}
-	  }
-  
-	  async _stop() {
-		if (!this.state.recording) {
-		  console.warn('Can\'t stop, not recording!');
-		  return;
-		}
-  
-		this.setState({stoppedRecording: true, recording: false});
-  
-		try {
-		  const filePath = await AudioRecorder.stopRecording();
-  
-		  if (Platform.OS === 'android') {
-			this._finishRecording(true, filePath);
-		  }
-		  return filePath;
-		} catch (error) {
-		  console.error(error);
-		}
-	  }
-  
-	  async _play(url) {
-		if (this.state.recording) {
-		  await this._stop();
-		}
-  
-		const callback = (error, sound) => {
-			if (error) {
-				return;
-			}
-			// Run optional pre-play callback
-			//testInfo.onPrepared && testInfo.onPrepared(sound, component);
-		
-			sound.play(() => {
-				// Success counts as getting to the end
-				// Release when it's done so we're not using up resources
-				this.setState({
-					playing: false,
-				})
-				sound.release();
-			});
-			
-		};
-	
-		// If the audio is a 'require' then the second parameter must be the callback.
-	 
-		const sound = new Sound(url, '', error => callback(error, sound));
-	
-	  }
-  
-	  async _record() {
-		if (this.state.recording) {
-		  console.warn('Already recording!');
-		  return;
-		}
-  
-		if (!this.state.hasPermission) {
-		  console.warn('Can\'t record, no permission granted!');
-		  return;
-		}
-  
-		if(this.state.stoppedRecording){
-		  this.prepareRecordingPath(this.state.audioPath);
-		}
-  
-		this.setState({recording: true});
-  
-		try {
-		  const filePath = await AudioRecorder.startRecording();
-		} catch (error) {
-		  console.error(error);
-		}
-	  }
-  
-	  _finishRecording(didSucceed, filePath) {
-		this.setState({ finished: didSucceed });
-		console.log(`Finished recording of duration ${this.state.currentTime} seconds at path: ${filePath}`);
-	  }
 
 	componentDidMount() {
 		var views;
@@ -219,26 +75,6 @@ export default class Comment extends Component {
                 dataSource: this.state.dataSource.cloneWithRows(workshops)
             });
 		});
-
-
-		this._checkPermission().then((hasPermission) => {
-			this.setState({ hasPermission });
-	
-			if (!hasPermission) return;
-	
-			this.prepareRecordingPath(this.state.audioPath);
-	
-			AudioRecorder.onProgress = (data) => {
-			  this.setState({currentTime: Math.floor(data.currentTime)});
-			};
-	
-			AudioRecorder.onFinished = (data) => {
-			  // Android callback comes in the form of a promise instead.
-			  if (Platform.OS === 'ios') {
-				this._finishRecording(data.status === "OK", data.audioFileURL);
-			  }
-			};
-		  });
 	}
 
 	renderRow(item, sectionId, rowId){
@@ -301,8 +137,8 @@ export default class Comment extends Component {
 							}
 							</TouchableOpacity>
 						</View>
-						:
-						<Text style={{fontSize: 12, color: 'black', marginLeft: 10}}>"{item.comment}"</Text>
+					:
+					<Text style={{fontSize: 12, color: 'black', marginLeft: 10}}>"{item.comment}"</Text>
 				}
 			</View>
 			
@@ -368,7 +204,6 @@ export default class Comment extends Component {
 										<Image source={require('../images/heartdisabled.png')} style={{height: 30, width: 30}}/>
 									}
 								</TouchableOpacity>
-
 							</View>
 						</View>
 					</View>
@@ -381,134 +216,35 @@ export default class Comment extends Component {
 							/>
 						</View>	
 						<View style={{flex: 1.2, flexDirection: 'row', alignItems: 'center', justifyContent:'center', marginBottom: 10}}>
-								{/*<Text style={{color: '#303030', fontSize: 24, fontWeight: 'bold', }}>Shout Title Goes Here</Text>*/}
-								<TextInput //source={usernameImg}
-									style={styles.input}
-									placeholder={this.state.recordingStatus}
-									placeholderTextColor='grey'
-									autoCapitalize={'none'}
-									returnKeyType={'done'}
-									autoCorrect={false}
-									underlineColorAndroid='transparent'
-									onChangeText={(text) => this.setState({ comment: text })}
-									value={this.state.comment}/>
+							<TextInput //source={usernameImg}
+								style={styles.input}
+								placeholder={this.props.recording}
+								placeholderTextColor='grey'
+								autoCapitalize={'none'}
+								returnKeyType={'done'}
+								autoCorrect={false}
+								underlineColorAndroid='transparent'
+								onChangeText={(text) => this.setState({ comment: text })}
+								value={this.state.comment}
+							/>
+							{
+							this.state.comment == '' ?
+								<AudioPlayer postName = {this.props.navigation.state.params.postName}/>
+								:
 								<TouchableOpacity
-									onPressIn = {() => {
-										if(this.state.comment == '')
-										{
-											this._record();
-											this.setState({
-												recordingStatus: 'Recording...'
-											})
-										}
-									}}
-									onPressOut = {() => {
-										if(this.state.comment == '')
-										{
-
-											this.setState({
-												recordingStatus: 'Write your comment!'
-											})
-											setTimeout(() => {
-												this._stop();
-												Alert.alert(
-													'Post recording',
-													'Are you sure you want to post this recording?',
-													[
-														{text: 'Yes', onPress: () => {
-															var date = new Date();
-															var recordName = 'record' + 
-															date.getUTCFullYear().toString() + '_' +
-															this.addZero(date.getUTCMonth()) +	 '_' +
-															this.addZero(date.getUTCDate()) + '_' +
-															this.addZero(date.getUTCHours()) + '_' +
-															this.addZero(date.getUTCMinutes()) + '_' +
-															this.addZero(date.getUTCSeconds()) + '_' +
-															this.addZero(date.getUTCMilliseconds()) + '.aac';
-			
-															const image = this.state.audioPath
-															const Blob = RNFetchBlob.polyfill.Blob
-															const fs = RNFetchBlob.fs
-															window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
-															window.Blob = Blob
-														
-															let uploadBlob = null
-															const imageRef = firebaseApp.storage().ref('records').child(recordName)
-															let mime = 'audio/aac'
-															fs.readFile(image, 'base64')
-																.then((data) => {
-																return Blob.build(data, { type: `${mime};BASE64` })
-															})
-															.then((blob) => {
-																uploadBlob = blob
-																return imageRef.put(blob, { contentType: mime })
-																})
-															.then((snapshot) => {
-																uploadBlob.close()
-																return imageRef.getDownloadURL();
-															})
-															.then((url) => {
-																var userId = firebaseApp.auth().currentUser.uid;
-																firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
-																.then((snapshot) => {
-						
-																	var d = new Date();
-																	var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
-																	firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('commentUsers').push({
-																		userId: userId,
-																		FullName: snapshot.val(),
-																		comment: url,
-																		commentTime: commentTime,
-																		recordName: recordName,
-																	})
-																	ToastAndroid.show('You have commented on this Shout!', ToastAndroid.SHORT);
-																	this.setState({ comment: '' })
-																	Keyboard.dismiss();
-																})
-																.catch((error) => {
-																})
-																var comments;
-																firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('comments').once('value')
-																.then((snapshot) => {
-																	comments = snapshot.val();
-																	comments ++;
-																	firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).update({
-																		comments: comments,
-																	})
-																})
-																.catch((error) => {
-																})
-															})
-															.catch((error) => {
-															})
-														}},
-														{text: 'No',  },
-													],
-													{ cancelable: false }
-												  )
-											}, 50);
-											return;
-										}
-										
+									onPress = {() => {
 										var userId = firebaseApp.auth().currentUser.uid;
-										
-										firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
-										.then((snapshot) => {
-
-											var d = new Date();
-											var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
-											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('commentUsers').push({
-												userId: userId,
-												FullName: snapshot.val(),
-												comment: this.state.comment,
-												commentTime: commentTime,
-											})
-											ToastAndroid.show('You have commented on this Shout!', ToastAndroid.SHORT);
-											this.setState({ comment: '' })
-											Keyboard.dismiss();
+										var d = new Date();
+										var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
+										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('commentUsers').push({
+											userId: userId,
+											FullName: this.props.fullName,
+											comment: this.state.comment,
+											commentTime: commentTime,
 										})
-										.catch((error) => {
-										})
+										ToastAndroid.show('You have commented on this Shout!', ToastAndroid.SHORT);
+										this.setState({ comment: '' })
+										Keyboard.dismiss();
 										var comments;
 										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('comments').once('value')
 										.then((snapshot) => {
@@ -521,13 +257,9 @@ export default class Comment extends Component {
 										.catch((error) => {
 										})
 									}}>
-									{
-									this.state.comment == '' ?
-										<Image source={require('../images/recordshout.png')} style={{ height: 50, width: 50}}/>
-										:
-										<Image source={require('../images/postshout.png')} style={{ height: 50, width: 50}}/>
-									}
+									<Image source={require('../images/postshout.png')} style={{ height: 50, width: 50}}/>
 								</TouchableOpacity>
+							}
 						</View>
 					</View>
 				</View>
@@ -560,3 +292,12 @@ const styles = StyleSheet.create({
 		width: 40,
 	},
 });
+
+function mapStateToProps(state) {
+	return {
+	  recording: state.getAppInfo.recording,
+	  fullName: state.getUserInfo.fullName,
+	};
+}
+
+export default connect(mapStateToProps)(Comment)

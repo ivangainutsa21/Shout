@@ -3,10 +3,12 @@ import Dimensions from 'Dimensions';
 import {
 	View
 } from 'react-native';
+import { connect } from "react-redux";
 import { NavigationActions } from 'react-navigation'
-import { firebaseApp } from '../firebase'
-
 import Spinner from 'react-native-loading-spinner-overlay';
+
+import { firebaseApp } from '../firebase'
+import { getFullName } from '../actions'
 
 const resetLogin = NavigationActions.reset({
 	index: 0,
@@ -21,7 +23,7 @@ const resetHome = NavigationActions.reset({
 	  NavigationActions.navigate({ routeName: 'home'})
 	]
 })
-export default class Splash extends Component {
+class Splash extends Component {
 	
 	constructor(props) {
 	super(props);
@@ -36,12 +38,26 @@ export default class Splash extends Component {
 
 	componentDidMount() {
 		firebaseApp.auth().onAuthStateChanged((user) => {
-			this.setState({
-				isLoading: false,
-			})
 			if (user) {
-				this.props.navigation.dispatch(resetHome);
+				var userId = firebaseApp.auth().currentUser.uid;
+				firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
+				.then((snapshot) => {
+					this.setState({
+						isLoading: false,
+					})
+					this.props.dispatch(getFullName(snapshot.val()));
+					this.props.navigation.dispatch(resetHome);
+				})
+				.catch((error) => {
+					this.setState({
+						isLoading: false,
+					})
+					console.log(error);
+				})
 			} else {
+				this.setState({
+					isLoading: false,
+				})
         		this.props.navigation.dispatch(resetLogin);
 			}
 		});
@@ -56,3 +72,4 @@ export default class Splash extends Component {
 	}
 }
 
+export default connect()(Splash)

@@ -1,15 +1,22 @@
-
 import React, { Component } from 'react';
 import {
   StyleSheet, View, TouchableOpacity, Text,
 } from 'react-native';
+import { connect } from "react-redux";
 import OneSignal from 'react-native-onesignal';
 
 import { firebaseApp } from './src/firebase';
 import RootNavigator from './src/screens/router';
 
-export default class App extends Component<{}> {
+import { registerPlayerIds } from './src/actions'
 
+class App extends Component<{}> {
+
+	constructor(props) {
+		super(props);
+		
+		this.onIds = this.onIds.bind(this);
+	}
 	
 	componentWillMount() {
         OneSignal.addEventListener('received', this.onReceived);
@@ -41,9 +48,7 @@ export default class App extends Component<{}> {
     }
 
     onIds(device) {
-		firebaseApp.database().ref('playerIds/').child(device.userId).set({
-			playerId: device.userId,
-		})
+		this.props.dispatch(registerPlayerIds(device.userId));
 	}
   render() {
     return (
@@ -60,3 +65,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FCFF',
   },
 });
+
+export default connect()(App);

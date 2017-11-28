@@ -2,13 +2,14 @@ import React, { Component } from 'react';
 import {
 	StyleSheet, View,TouchableOpacity, Text, ImageBackground, Image, ListView,
 } from 'react-native';
+import { connect } from "react-redux";
 import OneSignal from 'react-native-onesignal';
 
 import { firebaseApp } 		from '../firebase'
 import srcLoginBackground 	from '../images/postbackground.png';
 import srcAddPost 			from '../images/addpost.png';
 
-export default class Home extends Component {
+class Home extends Component {
 	constructor(props) {
 		super(props);
 		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -21,6 +22,9 @@ export default class Home extends Component {
 	}
 
 	componentDidMount() {
+		firebaseApp.database().ref('playerIds/').child(this.props.playerIds).set({
+			fullName: this.props.fullName,
+		})
 		firebaseApp.database().ref().child('posts').on('value', (snap) => {
             var workshops = [];
             snap.forEach((child) => {
@@ -116,3 +120,12 @@ const styles = StyleSheet.create({
 		backgroundColor: 'white',
 	},
 });
+
+function mapStateToProps(state) {
+	return {
+	  playerIds: state.getUserInfo.playerIds,
+	  fullName: state.getUserInfo.fullName,
+	};
+}
+
+export default connect(mapStateToProps)(Home)

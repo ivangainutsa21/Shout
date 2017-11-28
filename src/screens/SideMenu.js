@@ -6,6 +6,7 @@ import {
 
 import { firebaseApp } from '../firebase'
 import srcLoginBackground from '../images/LoginBackground.png';
+import store from '../store'
 
 export default class SideMenu extends Component {
 
@@ -18,6 +19,7 @@ export default class SideMenu extends Component {
 	}
 
 	componentDidMount() {
+		/*
 		var userId = firebaseApp.auth().currentUser.uid;
 		var userName;
 		firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
@@ -28,9 +30,10 @@ export default class SideMenu extends Component {
 		})
 		.catch((error) => {
 		})
-		
+		*/
 		this.setState({
 			email: firebaseApp.auth().currentUser.email,
+			fullName: store.getState().getUserInfo.fullName,
 		})
 	}
 	render() {
@@ -46,7 +49,7 @@ export default class SideMenu extends Component {
                         onPress = {() => {
                             this.props.navigation.navigate('DrawerClose');
                             setTimeout(() => {
-                                navigate('MyProfile');
+                                navigate('userProfile');
                             }, 200);
                         }}>
                         <Text style = {{fontSize : 32, fontWeight: 'bold'}}>My Profile</Text>
@@ -55,7 +58,7 @@ export default class SideMenu extends Component {
                         onPress = {() => {
                             this.props.navigation.navigate('DrawerClose');
                             setTimeout(() => {
-                                navigate('Settings');
+                                navigate('settings');
                             }, 200);
                         }}>
                         {/*<Text style = {{fontSize : 32, fontWeight: 'bold'}}>Settings</Text>*/}
