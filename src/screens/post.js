@@ -168,7 +168,7 @@ class Post extends Component {
 										postUrl: source
 									})
 								}
-								});	
+							});	
 						}}>
 						{
 						this.state.postUrl == null ?
