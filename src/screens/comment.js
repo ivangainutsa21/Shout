@@ -28,6 +28,7 @@ class Comment extends Component {
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 
 			playing: false,
+			titlePlaying: false,
 			playingRow: undefined,
 		}
 		this.renderRow = this.renderRow.bind(this);
@@ -56,6 +57,7 @@ class Comment extends Component {
 
 					this.setState({
 						likeAvaialbe: false,
+						isPlaying: false,
 					})
 				}
             });
@@ -95,35 +97,39 @@ class Comment extends Component {
 							}
 							<TouchableOpacity style={{marginLeft: 10}} 
 								onPress = {() => {
-									if(currnetSound != null)
+									this.setState({
+										titlePlaying: false,
+									})
+									console.log(currentSound);
+									if(currentSound != null)
 									{
-										currnetSound.stop();
-										currnetSound.release();
+										currentSound.stop();
+										currentSound.release();
 									}
 									if(rowId == this.state.playingRow && this.state.playing == true)
 									{
 										this.setState({
 											playing: false,
+											playingRow: undefined,
 										})
 										return;
 									}
-									const sound = new Sound(item.comment, '', error => callback(error, sound));
+
 									this.setState({
 										playing: true,
-									})
-									
-									this.setState({
 										playingRow: rowId,
 									})
 
+									const sound = new Sound(item.comment, '', error => callback(error, sound));
 									const callback = (error, sound) => {
 										if (error || this.state.playing == false) {
 											return;
 										}
-										currnetSound = sound;
+										currentSound = sound;
 										sound.play(() => {
 											this.setState({
 												playing: false,
+												playingRow: undefined,
 											})
 											sound.release();
 										});
@@ -155,21 +161,17 @@ class Comment extends Component {
         const { state } = this.props.navigation;
         
 		return (
-			<ImageBackground style={styles.container} source={srcLoginBackground}>
-				<View style={{flex: 0.7,}} >
-					<View style={{alignItems: 'flex-start'}} >
-						<TouchableOpacity style={{marginLeft: 30, marginTop : 20}} 
-							onPress = {() => {
-								this.props.navigation.goBack();
-						}}>
-							<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
-						</TouchableOpacity>
-					</View>
-					<View style={{justifyContent: 'flex-start', alignItems: 'flex-end'}} >
-						<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black', marginRight: 20,}}>Shout!</Text>
-					</View>
+			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
+				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, marginHorizontal: 20}} >
+					<TouchableOpacity
+						onPress = {() => {
+							this.props.navigation.goBack();
+					}}>
+						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+					</TouchableOpacity>
+					<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black', }}>Shout!</Text>
 				</View>
-				<View style = {{flex: 3,paddingHorizontal: 20, }}>
+				<View style = {{flex: 2,}}>
 					<View style = {{flex: 4, }}>
 						<View style={{backgroundColor: 'black', flex: 4, borderWidth: 3, borderColor: 'black'}}>
 							<Image source={{uri: state.params.downloadUrl}} style={{flex: 1,}}/>
@@ -204,10 +206,55 @@ class Comment extends Component {
 										<Image source={require('../images/heartdisabled.png')} style={{height: 30, width: 30}}/>
 									}
 								</TouchableOpacity>
+								{this.props.navigation.state.params.voiceTitle != undefined ?
+								<TouchableOpacity style={{marginLeft: 10}} 
+									onPress = {() => {
+										if(currentSound != null)
+										{
+											currentSound.stop();
+											currentSound.release();
+										}
+										
+										if(this.state.playingRow == undefined && this.state.playing == true)
+										{
+											this.setState({
+												playing:false,
+											})
+											return;
+										}
+										this.setState({
+											playingRow: undefined,
+										})
+										const sound = new Sound(this.props.navigation.state.params.voiceTitle, '', error => callback(error, sound));
+										this.setState({
+											playing: true,
+										})
+										
+										const callback = (error, sound) => {
+											if (error || this.state.playing == false) {
+												return;
+											}
+											currentSound = sound;
+											sound.play(() => {
+												this.setState({
+													playing: false,
+												})
+												sound.release();
+											});
+										};
+								}}>
+								{
+								
+									<Image source={(this.state.playing == true && this.state.playingRow == undefined) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
+								}
+								</TouchableOpacity>
+								:
+								null
+							}
 							</View>
 						</View>
 					</View>
-					<View style = {{flex: 2, }}>
+					<View style = {{flex: 3, }}>
 						<View style = {{flex: 3.5, marginTop: 10}}>
 							<ListView
 								dataSource={this.state.dataSource}
@@ -215,7 +262,7 @@ class Comment extends Component {
 								enableEmptySections={true}
 							/>
 						</View>	
-						<View style={{flex: 1.2, flexDirection: 'row', alignItems: 'center', justifyContent:'center', marginBottom: 10}}>
+						<View style={{flex: 1.2, flexDirection: 'row', alignItems: 'center', justifyContent:'center', marginVertical: 5}}>
 							<TextInput //source={usernameImg}
 								style={styles.input}
 								placeholder={this.props.recording}
@@ -263,17 +310,17 @@ class Comment extends Component {
 						</View>
 					</View>
 				</View>
-			</ImageBackground>
+			</View>
 		);
 	}
 }
 
-const currnetSound = null;
+const currentSound = null;
 
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: 'white',
+		backgroundColor: 'aliceblue',
 	},
 	input: {
 		backgroundColor: 'silver',

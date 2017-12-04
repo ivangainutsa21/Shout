@@ -11,12 +11,13 @@ import Sound 		from 'react-native-sound';
 import ImagePicker 	from 'react-native-image-picker';
 import Spinner 		from 'react-native-loading-spinner-overlay';
 import OneSignal 	from 'react-native-onesignal';
+import RNFetchBlob 	from 'react-native-fetch-blob';
 
-import { firebaseApp } 			from '../firebase'
-import RNFetchBlob 					from 'react-native-fetch-blob'
+import { firebaseApp } 		from '../firebase';
 import srcLoginBackground 	from '../images/postbackground.png';
-import srcAddPost 					from '../images/addpost.png';
-import store 								from '../store'
+import srcAddPost 			from '../images/addpost.png';
+import store 				from '../store';
+import TitlePlayer			from './titlePlayer';
 
 class Post extends Component {
 	constructor(props) {
@@ -28,8 +29,9 @@ class Post extends Component {
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 			shoutTitle: null,
 			userName: '',
-
+			isVoiceTitle: false,
 			isUploading: false,
+			isPlaying: false,
 		};
 	}
 
@@ -49,7 +51,37 @@ class Post extends Component {
 		}
 		return i;
 	}
-
+	uploadVoiceTitle = (uploadName) => {
+		const recordName = uploadName + '.aac';
+		const image = this.props.titleRecordPath;
+		const Blob = RNFetchBlob.polyfill.Blob
+		const fs = RNFetchBlob.fs
+		window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
+		window.Blob = Blob
+	
+		let uploadBlob = null
+		const imageRef = firebaseApp.storage().ref('records').child(recordName)
+		let mime = 'audio/aac'
+		fs.readFile(image, 'base64')
+			.then((data) => {
+			return Blob.build(data, { type: `${mime};BASE64` })
+		})
+		.then((blob) => {
+			uploadBlob = blob
+			return imageRef.put(blob, { contentType: mime })
+			})
+		.then((snapshot) => {
+			uploadBlob.close()
+			return imageRef.getDownloadURL();
+		})
+		.then((url) => {
+			firebaseApp.database().ref('posts/').child(uploadName).update({
+				voiceTitle: url,
+			})
+		})
+		.catch((error) => {
+		})
+	}
 	postShout = () => {
 		var date = new Date();
 		var uploadName = 'post' + 
@@ -82,12 +114,11 @@ class Post extends Component {
 			uploadBlob = blob
 			return imageRef.put(blob, { contentType: mime })
 			})
-		.then((snapshot) => {
+		.then(() => {
 			uploadBlob.close()
 			return imageRef.getDownloadURL();
 		})
 		.then((url) => {
-
 			ToastAndroid.show('Your shout has been posted successfully', ToastAndroid.LONG);
 			firebaseApp.database().ref('posts/').child(uploadName).set({
 				filename: uploadName + '.jpg',
@@ -101,6 +132,7 @@ class Post extends Component {
 				playerIds: this.props.playerIds,
 			})
 			
+			this.uploadVoiceTitle(uploadName);
 			this.setState({
 				isUploading: false,
 			})
@@ -130,23 +162,20 @@ class Post extends Component {
 			}
 		};
 		return (
-			<ImageBackground style={styles.container} source={srcLoginBackground}>
+			<View style={styles.container} >
 				<Spinner visible={this.state.isUploading} textContent={"Uploading..."} textStyle={{color: '#FFF'}} />
 			
-				<View style={{flex: 2, }} >
-					<View style={{alignItems: 'flex-start'}} >
-						<TouchableOpacity style={{marginLeft: 30, marginTop: 30}} 
-							onPress = {() => {
-								this.props.navigation.goBack();
-							}}>
-							<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
-						</TouchableOpacity>
-					</View>
-					<View style={{alignItems: 'flex-end'}} >
-						<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black', marginRight: 20}}>Shout Here</Text>
-					</View>
+				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
+					
+					<TouchableOpacity
+						onPress = {() => {
+							this.props.navigation.goBack();
+						}}>
+						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+					</TouchableOpacity>
+					<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black',}}>Shout Now</Text>
 				</View>
-				<View style={{flex: 5.5, paddingHorizontal: 20}}>
+				<View style={{flex: 3, paddingHorizontal: 10}}>
 					<TouchableOpacity 
 						style={[this.state.postUrl == null ? styles.button : null, style={backgroundColor: 'black',flex: 4}]}
 						onPress = {() => {
@@ -178,28 +207,88 @@ class Post extends Component {
 						}
 					</TouchableOpacity>
 					<View style={{backgroundColor: 'whitesmoke', flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent:'center', }}>
-							<TextInput //source={usernameImg}
-								style={styles.input}
-								placeholder='Shout Title Goes Here'
-								autoCapitalize={'none'}
-								returnKeyType={'done'}
-								autoCorrect={false}
-								placeholderTextColor='black'
-								underlineColorAndroid='transparent'
-								onChangeText={(text) => this.setState({ shoutTitle: text })}/>
+						<TextInput //source={usernameImg}
+							style={styles.input}
+							placeholder='Write your shout title here...'
+							autoCapitalize={'none'}
+							returnKeyType={'done'}
+							autoCorrect={false}
+							placeholderTextColor='black'
+							underlineColorAndroid='transparent'
+							maxLength = {30}
+							onChangeText={(text) => this.setState({ shoutTitle: text })}/>
 					</View>
 				</View>
-				<View style={{alignItems: 'center', flex: 2.5, justifyContent: 'center'}}>
-						<TouchableOpacity
-							disabled={true}
-							onPressIn = {() => {
-							}}
-							onPressOut = {() => {
+				<View style={{flex: 2, justifyContent: 'center', paddingHorizontal: 20}}>
+					<View style = {{flex: 1}}>
+						<Text style = {{fontSize: 14, backgroundColor: 'transparent', color: 'black',}}>Shout out louder with your voice</Text>
+					</View>
+					<View style = {{flex: 3, alignItems: 'center'}}>
+						<TitlePlayer />
+					</View>
+					<View style={{flexDirection: 'row', flex: 3, alignItems: 'center', justifyContent: 'center'}}>
+						<TouchableOpacity 
+							onPress = {() => {
+								if(this.props.titleRecordPath == '')
+									return;
+								if(currentSound != null)
+								{
+									currentSound.stop();
+									currentSound.release();
+									currentSound = null;
+									this.setState({
+										isPlaying: false,
+									})
+									return;
+								}
+								
+								this.setState({
+									isPlaying: true,
+								})
+								const sound = new Sound(this.props.titleRecordPath, '', error => callback(error, sound));
+							
+								const callback = (error, sound) => {
+									if (error) {
+										return;
+									}
+									currentSound = sound;
+									sound.play(() => {
+
+										this.setState({
+											isPlaying: false,
+										})
+										currentSound = null;
+										sound.release();
+									});
+								};
 							}}>
-							<Image source={require('../images/recordshoutdisabled.png')} style={{ height: 60, width: 60}}/>	
+							{
+								this.state.isPlaying == false ?
+									<Image source={require('../images/play-button.png')} style={{width: 24, height: 24, }}/>
+									:
+									<Image source={require('../images/stop-button.png')} style={{width: 24, height: 24, }}/>
+							}
+						</TouchableOpacity>
+						<View style={{height: 1, flex: 1, marginHorizontal: 20, backgroundColor: 'black'}}></View>
+						<TouchableOpacity 
+							style={{}}
+							onPress = {() => {
+								
+							}}>
+							<Image source={require('../images/multiply.png')} style={{width: 24, height: 24, }}/>
+						</TouchableOpacity>
+					</View>
+					<View style={{flexDirection: 'row', flex: 2, justifyContent: 'space-between',}}>
+						<TouchableOpacity 
+							style={[styles.button, {marginTop: 5,}]}
+							onPress = {() => {
+								this.props.navigation.goBack();
+							}}>
+							<Image source={require('../images/multiply.png')} style={{width: 24, height: 24,}}/>
+							<Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black',}}>CANCEL</Text>
 						</TouchableOpacity>
 						<TouchableOpacity 
-							style={[styles.button, {backgroundColor: '#7ca0eb', width: 120, borderRadius: 25, marginTop: 5,}]}
+							style={[styles.button, {marginTop: 5,}]}
 							onPress = {() => {
 								if(this.state.postUrl == null || this.state.shoutTitle == null)
 								{
@@ -214,21 +303,23 @@ class Post extends Component {
 								setTimeout(() => {
 
 									if(this.state.isUploading == true)
-										ToastAndroid.show('Net error: Upload failed. Please try again.', ToastAndroid.LONG);
+										ToastAndroid.show('Internet connection problem: Please try again.', ToastAndroid.LONG);
 									this.setState({
 										isUploading: false,
 									})
 								}, 10000);
 							}}>
-							<Image source={require('../images/postshout.png')} style={{width: 50, height: 50, marginLeft: 10}}/>
+							<Image source={require('../images/megaphone.png')} style={{width: 32, height: 32, }}/>
+							<Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black',}}>SHOUT!</Text>
 						</TouchableOpacity>
-						</View>
-			</ImageBackground>
+					</View>
+				</View>
+			</View>
 		);
 	}
 }
 
-
+const currentSound = null;
 const DEVICE_WIDTH = Dimensions.get('window').width;
 const DEVICE_HEIGHT = Dimensions.get('window').height;
 const MARGIN = 40;
@@ -236,8 +327,7 @@ const MARGIN = 40;
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		backgroundColor: 'white',
-		width: null,
+		backgroundColor: 'aliceblue',
 	},
 	input: {
 		padding: 0,
@@ -245,7 +335,7 @@ const styles = StyleSheet.create({
 		fontSize: 18,
 		color: 'black',
 		borderRadius: 20,
-		width: 220,
+		width: 250,
 		height: 40,
 	},
 	button: {
@@ -264,6 +354,7 @@ const styles = StyleSheet.create({
 function mapStateToProps(state) {
 	return {
 	  playerIds: state.getUserInfo.playerIds,
+	  titleRecordPath: state.getAppInfo.titleRecordPath,
 	};
 }
 

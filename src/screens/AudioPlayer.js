@@ -9,6 +9,7 @@ import {
     Platform,
     PermissionsAndroid,
     Image,
+    Vibration,
     Alert,
 } from 'react-native';
 import { connect } from "react-redux";
@@ -179,10 +180,13 @@ class AudioPlayer extends Component {
     
     render() {
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
+                style = {{
+                }}
                 onPressIn = {() => {
                     this._record()
                     this.props.dispatch(getRecordingStatus(true));
+                    Vibration.vibrate(100);
                 }} 
                 onPressOut = {() => {
                     setTimeout(() => {
@@ -262,7 +266,7 @@ class AudioPlayer extends Component {
                             ],
                             { cancelable: false }
                             )
-                    }, 50);
+                    }, 150);
                 }}>
                 <Image source={require('../images/recordshout.png')} style={{ height: 50, width: 50}}/>
             </TouchableOpacity>

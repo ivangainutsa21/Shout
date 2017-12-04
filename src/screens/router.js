@@ -11,6 +11,8 @@ import UserProfile 		from './userProfile';
 import Settings 		from './settings';
 import Comment 			from './comment';
 import Splash 			from './splash';
+import HomeGroup 		from './homeGroup';
+import NewGroup 		from './newGroup';
 
 const homeDrawer = DrawerNavigator({
 		home: {screen: Home,},
@@ -32,11 +34,11 @@ const RootNavigator = StackNavigator({
 	login: {
 		screen: Login,
 	},
-	post: {
-		screen: Post, 
-	},
 	signup: {
 		screen: Signup, 
+	},
+	post: {
+		screen: Post, 
 	},
 	home: {
 		screen: homeDrawer,
@@ -49,7 +51,13 @@ const RootNavigator = StackNavigator({
 	},
 	comment: {
 		screen: Comment,
-	}
+	},
+	homeGroup: {
+		screen: HomeGroup,
+	},
+	newGroup: {
+		screen: NewGroup,
+	},
 });
 
 export default RootNavigator;
