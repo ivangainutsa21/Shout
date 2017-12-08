@@ -75,7 +75,7 @@ class Post extends Component {
 			return imageRef.getDownloadURL();
 		})
 		.then((url) => {
-			firebaseApp.database().ref('posts/').child(uploadName).update({
+			firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).update({
 				voiceTitle: url,
 			})
 		})
@@ -120,16 +120,19 @@ class Post extends Component {
 		})
 		.then((url) => {
 			ToastAndroid.show('Your shout has been posted successfully', ToastAndroid.LONG);
-			firebaseApp.database().ref('posts/').child(uploadName).set({
+			firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).set({
 				filename: uploadName + '.jpg',
 				downloadUrl: url,
 				userName: this.state.userName,
 				shoutTitle: this.state.shoutTitle,
-				views: 0,
 				comments: 0,
 				likes: 0,
 				date: postDate,
 				playerIds: this.props.playerIds,
+			});
+
+			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
+				thumbLink : url,
 			})
 			
 			this.uploadVoiceTitle(uploadName);
@@ -173,7 +176,7 @@ class Post extends Component {
 						}}>
 						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
 					</TouchableOpacity>
-					<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black',}}>Shout Now</Text>
+					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black',}}>Shout Now</Text>
 				</View>
 				<View style={{flex: 3, paddingHorizontal: 10}}>
 					<TouchableOpacity 

@@ -3,6 +3,7 @@ import {
     RECORDING_STATUS,
     REGISTER_PLAYERIDS,
     SAVE_TITLE_RECORD,
+    GET_GROUP,
 } from '../actions'
 
 const initialState = {
@@ -10,6 +11,7 @@ const initialState = {
     recording: 'Write your comment!',
     playerIds: '',
     titleRecordPath: '',
+    group: [],
 }
 
 export const getUserInfo = (state = initialState, action) => {
@@ -18,6 +20,8 @@ export const getUserInfo = (state = initialState, action) => {
             return {...state, fullName: action.fullName}
         case REGISTER_PLAYERIDS:
             return {...state, playerIds: action.playerIds}
+        case GET_GROUP:
+            return {...state, group: action.group}
         default:
             return state;
     }

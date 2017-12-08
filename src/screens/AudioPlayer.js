@@ -234,7 +234,7 @@ class AudioPlayer extends Component {
                                         .then((snapshot) => {
                                             var d = new Date();
                                             var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
-                                            firebaseApp.database().ref('/posts/').child(this.props.postName).child('commentUsers').push({
+                                            firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).child('commentUsers').push({
                                                 userId: userId,
                                                 FullName: snapshot.val(),
                                                 comment: url,
@@ -248,11 +248,11 @@ class AudioPlayer extends Component {
                                         .catch((error) => {
                                         })
                                         var comments;
-                                        firebaseApp.database().ref('/posts/').child(this.props.postName).child('comments').once('value')
+                                        firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).child('comments').once('value')
                                         .then((snapshot) => {
                                             comments = snapshot.val();
                                             comments ++;
-                                            firebaseApp.database().ref('/posts/').child(this.props.postName).update({
+                                            firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).update({
                                                 comments: comments,
                                             })
                                         })

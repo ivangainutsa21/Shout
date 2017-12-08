@@ -8,7 +8,7 @@ import { NavigationActions } from 'react-navigation'
 import Spinner from 'react-native-loading-spinner-overlay';
 
 import { firebaseApp } from '../firebase'
-import { getFullName } from '../actions'
+import { getFullName, getGroup } from '../actions'
 
 const resetLogin = NavigationActions.reset({
 	index: 0,
@@ -20,15 +20,17 @@ const resetLogin = NavigationActions.reset({
 const resetHome = NavigationActions.reset({
 	index: 0,
 	actions: [
-	  NavigationActions.navigate({ routeName: 'home'})
+	  NavigationActions.navigate({ routeName: 'homeGroup'})
 	]
 })
+
+
 class Splash extends Component {
 	
 	constructor(props) {
 	super(props);
 		this.state = {
-			isLoading: true,	
+			isLoading: true,
 		}
 	}
 
@@ -36,24 +38,36 @@ class Splash extends Component {
 		header: null
 	};
 
+	
 	componentDidMount() {
+		
 		firebaseApp.auth().onAuthStateChanged((user) => {
 			if (user) {
 				var userId = firebaseApp.auth().currentUser.uid;
 				firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
 				.then((snapshot) => {
-					this.setState({
-						isLoading: false,
-					})
+
 					this.props.dispatch(getFullName(snapshot.val()));
-					this.props.navigation.dispatch(resetHome);
+
+					firebaseApp.database().ref('/users/').child(userId).child('group').once('value', (snap) => {
+						this.setState({
+							isLoading: false,
+						})
+						var workshops = [];
+						snap.forEach((child) => {
+							workshops.push(child.val().name);
+						});
+						this.props.dispatch(getGroup(workshops));
+						this.props.navigation.dispatch(resetHome);
+					});
 				})
-				.catch((error) => {
+				.catch((error) => {                                                                                                                                                                                                                                                    
 					this.setState({
 						isLoading: false,
 					})
 					console.log(error);
 				})
+				
 			} else {
 				this.setState({
 					isLoading: false,
@@ -70,6 +84,6 @@ class Splash extends Component {
 			</View>
 		);
 	}
-}
+} 
 
 export default connect()(Splash)

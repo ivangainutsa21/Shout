@@ -15,7 +15,7 @@ import HomeGroup 		from './homeGroup';
 import NewGroup 		from './newGroup';
 
 const homeDrawer = DrawerNavigator({
-		home: {screen: Home,},
+		homeGroup: {screen: HomeGroup,},
 	},
 	{	
 		drawerWidth: 250,
@@ -41,7 +41,7 @@ const RootNavigator = StackNavigator({
 		screen: Post, 
 	},
 	home: {
-		screen: homeDrawer,
+		screen: Home,
 	},
 	userProfile: {
 		screen: UserProfile,
@@ -53,7 +53,7 @@ const RootNavigator = StackNavigator({
 		screen: Comment,
 	},
 	homeGroup: {
-		screen: HomeGroup,
+		screen: homeDrawer,
 	},
 	newGroup: {
 		screen: NewGroup,

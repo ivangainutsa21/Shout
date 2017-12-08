@@ -23,18 +23,21 @@ class Home extends Component {
 		this.renderRow = this.renderRow.bind(this);
 	}
 
+	static navigationOptions = {
+		header: null
+	};
+
 	componentDidMount() {
 		firebaseApp.database().ref('playerIds/').child(this.props.playerIds).set({
 			fullName: this.props.fullName,
 		})
-		firebaseApp.database().ref().child('posts').on('value', (snap) => {
+		firebaseApp.database().ref().child('posts').child(this.props.navigation.state.params.groupName).on('value', (snap) => {
             var workshops = [];
             snap.forEach((child) => {
                 workshops.push({
 					downloadUrl: child.val().downloadUrl,
 					userName: child.val().userName,
 					shoutTitle: child.val().shoutTitle,
-					views: child.val().views,
 					comments: child.val().comments,
 					likes: child.val().likes,
 					date: child.val().date,
@@ -54,7 +57,7 @@ class Home extends Component {
 				<TouchableOpacity style={{flex: 1, }} activeOpacity={1}
 					onPress = {() => {
 						if(item.postName != null){
-							this.props.navigation.navigate('comment', {postName: item.postName, downloadUrl: item.downloadUrl, shoutTitle: item.shoutTitle, userName: item.userName, date: item.date, voiceTitle: item.voiceTitle});
+							this.props.navigation.navigate('comment', {postName: item.postName, downloadUrl: item.downloadUrl, shoutTitle: item.shoutTitle, userName: item.userName, date: item.date, voiceTitle: item.voiceTitle, groupName: this.props.navigation.state.params.groupName});
 						}
 					}}>
 					<View style = {{shadowOffset:{ height: 1,  },shadowColor: 'black', shadowOpacity: 1.0,}}>
@@ -131,15 +134,15 @@ class Home extends Component {
 		return (
 			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
-					<TouchableOpacity
+					<TouchableOpacity style={{}} 
 						onPress = {() => {
-							navigate('DrawerOpen');
-						}}>
-						<Image source={require('../images/menu.png')} style={{height: 40, width: 40}}/>	
+							this.props.navigation.goBack();
+					}}>
+						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
 					</TouchableOpacity>
-					<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black',}}>Shouts</Text>
+					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>{this.props.navigation.state.params.groupName}</Text>
 				</View>
-				<View style = {{flex: 1, backgroundColor: 'darkgrey'}}>
+				<View style = {{flex: 1, backgroundColor: 'aliceblue'}}>
 					<ListView
 						dataSource={this.state.dataSource}
 						renderRow={this.renderRow}
@@ -158,14 +161,14 @@ class Home extends Component {
 					<TouchableOpacity
 						style = {{}}
 						onPress = {() => {
-							navigate('post');
+							navigate('post', {groupName: this.props.navigation.state.params.groupName, groupKey: this.props.navigation.state.params.groupKey});
 						}}>
 						<Image source={require('../images/home_plus.png')} style={{width: 32, height: 32,}}/>
 					</TouchableOpacity>
 					<TouchableOpacity
 						style = {{}}
 						onPress = {() => {
-							navigate('homeGroup');
+							//navigate('homeGroup');
 						}}>
 						<Image source={require('../images/home_notification.png')} style={{width: 32, height: 32,}}/>
 					</TouchableOpacity>

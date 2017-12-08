@@ -39,19 +39,8 @@ class Comment extends Component {
 	};
 
 	componentDidMount() {
-		var views;
-		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('views').once('value')
-		.then((snapshot) => {
-			views = snapshot.val();
-			views ++;
-			firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).update({
-				views: views,
-			})
-		})
-		.catch((error) => {
-		})
 		
-		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('likeUsers').on('value', (snap) => {
+		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likeUsers').on('value', (snap) => {
             snap.forEach((child) => {
 				if(child.val().userId == firebaseApp.auth().currentUser.uid) {
 
@@ -63,7 +52,7 @@ class Comment extends Component {
             });
 		});
 
-		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('commentUsers').on('value', (snap) => {
+		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('commentUsers').on('value', (snap) => {
             var workshops = [];
             snap.forEach((child) => {
 				workshops.push({
@@ -159,17 +148,19 @@ class Comment extends Component {
 	render() {
         const { navigate } = this.props.navigation;
         const { state } = this.props.navigation;
-        
+        const backAction = NavigationActions.back({
+			key: null
+		})
 		return (
 			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity
 						onPress = {() => {
-							this.props.navigation.goBack();
+							this.props.navigation.dispatch(backAction);
 					}}>
 						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
 					</TouchableOpacity>
-					<Text style = {{fontSize: 40, backgroundColor: 'transparent', color: 'black', }}>Shout!</Text>
+					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>Shout!</Text>
 				</View>
 				<View style = {{flex: 2,}}>
 					<View style = {{flex: 4, }}>
@@ -183,15 +174,15 @@ class Comment extends Component {
 								<TouchableOpacity style={{marginLeft: 20, }} disabled = {!this.state.likeAvaialbe}
 									onPress = {() => {
 										var userId = firebaseApp.auth().currentUser.uid;
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('likeUsers').push({
+										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likeUsers').push({
 											userId,
 										})
 										var likes;
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('likes').once('value')
+										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likes').once('value')
 										.then((snapshot) => {
 											likes = snapshot.val();
 											likes ++;
-											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).update({
+											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).update({
 												likes: likes,
 											})
 											ToastAndroid.show('You have liked this Shout!', ToastAndroid.SHORT);
@@ -276,14 +267,14 @@ class Comment extends Component {
 							/>
 							{
 							this.state.comment == '' ?
-								<AudioPlayer postName = {this.props.navigation.state.params.postName}/>
+								<AudioPlayer postName = {this.props.navigation.state.params.postName} groupName = {this.props.navigation.state.params.groupName}/>
 								:
 								<TouchableOpacity
 									onPress = {() => {
 										var userId = firebaseApp.auth().currentUser.uid;
 										var d = new Date();
 										var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('commentUsers').push({
+										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('commentUsers').push({
 											userId: userId,
 											FullName: this.props.fullName,
 											comment: this.state.comment,
@@ -293,11 +284,11 @@ class Comment extends Component {
 										this.setState({ comment: '' })
 										Keyboard.dismiss();
 										var comments;
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).child('comments').once('value')
+										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('comments').once('value')
 										.then((snapshot) => {
 											comments = snapshot.val();
 											comments ++;
-											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.postName).update({
+											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).update({
 												comments: comments,
 											})
 										})
