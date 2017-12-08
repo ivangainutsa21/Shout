@@ -306,7 +306,7 @@ class Post extends Component {
 								setTimeout(() => {
 
 									if(this.state.isUploading == true)
-										ToastAndroid.show('Internet connection problem: Please try again.', ToastAndroid.LONG);
+										ToastAndroid.show('Internet connection problem: Time Out', ToastAndroid.LONG);
 									this.setState({
 										isUploading: false,
 									})

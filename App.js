@@ -48,8 +48,8 @@ class App extends Component<{}> {
     }
 
     onIds(device) {
-		this.props.dispatch(registerPlayerIds(device.userId));
-	}
+      this.props.dispatch(registerPlayerIds(device.userId));
+    }
   render() {
     return (
       <View style={styles.container}>

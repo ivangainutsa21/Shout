@@ -30,14 +30,18 @@ class HomeGroup extends Component {
     };
     
 	componentWillMount() {
+        var userId = firebaseApp.auth().currentUser.uid;
         firebaseApp.database().ref().child('groups').on('value', (snap) => {
             var groups = [];
             snap.forEach((child) => {
-                groups.push({
-                    groupKey: child.key,
-                    groupName: child.val().groupName,
-                    thumbLink: child.val().thumbLink,
-                });
+                if(child.val().privacy == undefined || child.val().privacy == userId)
+                {
+                    groups.push({
+                        groupKey: child.key,
+                        groupName: child.val().groupName,
+                        thumbLink: child.val().thumbLink,
+                    });
+                }
             })
             groups.push({
                 groupName: 'lastOneGroup',

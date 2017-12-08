@@ -14,7 +14,7 @@ class NewGroup extends Component {
         super(props);
 
         this.state = {
-            privacy: [{label: 'Public', value: 0}, {label: 'Private', value: 1},],
+            privacy: [{label: 'Public', value: 'public'}, {label: 'Private', value: 'private'},],
             value: 0,
             valueIndex: 0,
             groupName: '',
@@ -48,6 +48,12 @@ class NewGroup extends Component {
             this.addZero(date.getUTCMinutes()) + '_' +
             this.addZero(date.getUTCSeconds()) + '_' +
             this.addZero(date.getUTCMilliseconds());
+            if(this.state.value == 'private') {
+                var userId = firebaseApp.auth().currentUser.uid;
+                firebaseApp.database().ref().child('groups').child(groupName).update({
+                    privacy: userId,
+                });
+            }
             firebaseApp.database().ref().child('groups').child(groupName).update({
                 groupName: this.state.groupName,
             })

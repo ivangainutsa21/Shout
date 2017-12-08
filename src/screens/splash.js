@@ -47,19 +47,11 @@ class Splash extends Component {
 				firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
 				.then((snapshot) => {
 
+					this.setState({
+						isLoading: false,
+					})
 					this.props.dispatch(getFullName(snapshot.val()));
-
-					firebaseApp.database().ref('/users/').child(userId).child('group').once('value', (snap) => {
-						this.setState({
-							isLoading: false,
-						})
-						var workshops = [];
-						snap.forEach((child) => {
-							workshops.push(child.val().name);
-						});
-						this.props.dispatch(getGroup(workshops));
-						this.props.navigation.dispatch(resetHome);
-					});
+					this.props.navigation.dispatch(resetHome);
 				})
 				.catch((error) => {                                                                                                                                                                                                                                                    
 					this.setState({
