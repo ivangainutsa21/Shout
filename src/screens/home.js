@@ -1,10 +1,11 @@
 import React, { Component } from 'react';
 import {
-	StyleSheet, View,TouchableOpacity, Text, ImageBackground, Image, ListView,
+	StyleSheet, View,TouchableOpacity, Text, ImageBackground, Image, ListView,DeviceEventEmitter
 } from 'react-native';
 import { connect } from "react-redux";
 import OneSignal 	from 'react-native-onesignal';
 import Sound 		from 'react-native-sound';
+import RNAudioStreamer from 'react-native-audio-streamer';
 
 import { firebaseApp } 		from '../firebase'
 
@@ -16,13 +17,18 @@ class Home extends Component {
 		this.state = {
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 
-			playing: false,
+			isPlaying: false,
 			playingRow: undefined,
 		};
-
 		this.renderRow = this.renderRow.bind(this);
+		this.subscription = DeviceEventEmitter.addListener('RNAudioStreamerStatusChanged',this._statusChanged.bind(this));
 	}
 
+	_statusChanged(status) {
+		if(status == 'FINISHED'){
+			this.setState({isPlaying: false,});
+		}
+	}
 	static navigationOptions = {
 		header: null
 	};
@@ -57,7 +63,7 @@ class Home extends Component {
 				<TouchableOpacity style={{flex: 1, }} activeOpacity={1}
 					onPress = {() => {
 						if(item.postName != null){
-							this.props.navigation.navigate('comment', {postName: item.postName, downloadUrl: item.downloadUrl, shoutTitle: item.shoutTitle, userName: item.userName, date: item.date, voiceTitle: item.voiceTitle, groupName: this.props.navigation.state.params.groupName});
+							this.props.navigation.navigate('comment', {postName: item.postName, downloadUrl: item.downloadUrl, shoutTitle: item.shoutTitle, userName: item.userName, date: item.date, voiceTitle: item.voiceTitle, groupName: this.props.navigation.state.params.groupName,});
 						}
 					}}>
 					<View style = {{shadowOffset:{ height: 1,  },shadowColor: 'black', shadowOpacity: 1.0,}}>
@@ -73,54 +79,25 @@ class Home extends Component {
 							<Text style={{fontSize: 12, color: 'darkgray',}}>{item.comments}</Text>
 							<Image source={require('../images/like.png')} style={{width: 18, height: 18, marginLeft: 10}}/>
 							<Text style={{fontSize: 12, color: 'darkgray',}}>{item.likes}</Text>
-							{
-								item.voiceTitle != undefined ?
-								<TouchableOpacity style={{marginLeft: 10}} 
+								<TouchableOpacity style={item.voiceTitle == undefined ? {marginLeft: 10, display: 'none'} : {marginLeft: 10, }}
 									onPress = {() => {
-										if(currentSound != null)
+										if(rowId == this.state.playingRow && this.state.isPlaying == true)
 										{
-											currentSound.stop();
-											currentSound.release();
-										}
-										if(rowId == this.state.playingRow && this.state.playing == true)
-										{
-											this.setState({
-												playing: false,
-											})
+											RNAudioStreamer.pause();
+											this.setState({isPlaying: false,});
 											return;
 										}
-										const sound = new Sound(item.voiceTitle, '', error => callback(error, sound));
-										this.setState({
-											playing: true,
-										})
-										
+
+										RNAudioStreamer.setUrl(item.voiceTitle);
+										RNAudioStreamer.play()
+
 										this.setState({
 											playingRow: rowId,
+											isPlaying: true,
 										})
-
-										const callback = (error, sound) => {
-											if (error || this.state.playing == false) {
-												return;
-											}
-											currentSound = sound;
-											sound.play(() => {
-												this.setState({
-													playing: false,
-												})
-												sound.release();
-											});
-										};
 								}}>
-								{
-								rowId == this.state.playingRow ?
-									<Image source={this.state.playing == false ? require('../images/play-button.png') : require('../images/stop-button.png')} style={{height: 18, width: 18}}/>	
-									:
-									<Image source={require('../images/play-button.png')} style={{height: 18, width: 18}}/>	
-								}
+								<Image source={(rowId == this.state.playingRow && this.state.isPlaying == true) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
 								</TouchableOpacity>
-								:
-								null
-							}
 					</View>
 						<Text style={{fontSize: 12,}}>{item.userName}, {item.date}</Text>
 					
@@ -177,8 +154,6 @@ class Home extends Component {
 		);
 	}
 }
-
-const currentSound = null;
 
 const styles = StyleSheet.create({
 	container: {

@@ -2,13 +2,16 @@ import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
 	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, Image, ListView,
-	Platform, PermissionsAndroid, ToastAndroid,Alert, Keyboard,
+	Platform, PermissionsAndroid, ToastAndroid,Alert, Keyboard,DeviceEventEmitter,
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import {
 	AudioRecorder, AudioUtils
 } from 'react-native-audio';
-import Sound 		from 'react-native-sound';
+import Sound 				from 'react-native-sound';
+import ImageView 			from 'react-native-image-view';
+import ImageResizer 		from 'react-native-image-resizer';
+import RNAudioStreamer 		from 'react-native-audio-streamer';
 
 import RNFetchBlob 			from 'react-native-fetch-blob'
 import { firebaseApp } 		from '../firebase';
@@ -16,6 +19,7 @@ import srcLoginBackground 	from '../images/postbackground.png';
 import srcAddPost 			from '../images/addpost.png';
 import AudioPlayer 			from './audioPlayer';
 import { connect } 			from "react-redux";
+
 
 class Comment extends Component {
 	constructor(props) {
@@ -27,16 +31,30 @@ class Comment extends Component {
 			comment: '',
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 
-			playing: false,
-			titlePlaying: false,
+			isPlaying: false,
 			playingRow: undefined,
+			isVisible: false,
+			imageWidth: 0,
+			imageHeight: 0,
 		}
 		this.renderRow = this.renderRow.bind(this);
+		this.onImageClose = this.onImageClose.bind(this);
+		this.subscription = DeviceEventEmitter.addListener('RNAudioStreamerStatusChanged',this._statusChanged.bind(this));
 	}
 
 	static navigationOptions = {
 		header: null
 	};
+
+	_statusChanged(status) {
+		if(status == 'FINISHED') {
+			this.setState({
+				playingRow: undefined,
+				isPlaying: false,
+			})
+		}
+
+	}
 
 	componentDidMount() {
 		
@@ -68,6 +86,11 @@ class Comment extends Component {
 		});
 	}
 
+	onImageClose() {
+		this.setState({
+			isVisible: false,
+		})
+	}
 	renderRow(item, sectionId, rowId){
         return(
 			<View style={{backgroundColor: 'whitesmoke', marginLeft: 10, marginBottom: 10}}>
@@ -80,56 +103,31 @@ class Comment extends Component {
 						<View style={{flexDirection: 'row', justifyContent: 'center', alignItems:'center',marginBottom: 5}}>
 							{
 								rowId == this.state.playingRow ?
-									<Text style={{fontSize: 16, color: 'black',}}>{this.state.playing == false ? 'Play' : 'Stop'}</Text>
+									<Text style={{fontSize: 16, color: 'black',}}>{(this.state.isPlaying == true) ? 'Stop' : 'Play'}</Text>
 									:
 									<Text style={{fontSize: 16, color: 'black',}}>Play</Text>
 							}
 							<TouchableOpacity style={{marginLeft: 10}} 
 								onPress = {() => {
-									this.setState({
-										titlePlaying: false,
-									})
-									console.log(currentSound);
-									if(currentSound != null)
+									if(rowId == this.state.playingRow && this.state.isPlaying == true)
 									{
-										currentSound.stop();
-										currentSound.release();
-									}
-									if(rowId == this.state.playingRow && this.state.playing == true)
-									{
+										RNAudioStreamer.pause();
 										this.setState({
-											playing: false,
-											playingRow: undefined,
+											isPlaying: false,
 										})
 										return;
 									}
 
+									RNAudioStreamer.setUrl(item.comment);
+									RNAudioStreamer.play()
+									
 									this.setState({
-										playing: true,
 										playingRow: rowId,
+										isPlaying: true,
 									})
-
-									const sound = new Sound(item.comment, '', error => callback(error, sound));
-									const callback = (error, sound) => {
-										if (error || this.state.playing == false) {
-											return;
-										}
-										currentSound = sound;
-										sound.play(() => {
-											this.setState({
-												playing: false,
-												playingRow: undefined,
-											})
-											sound.release();
-										});
-									};
 							}}>
-							{
-							rowId == this.state.playingRow ?
-								<Image source={this.state.playing == false ? require('../images/play-button.png') : require('../images/stop-button.png')} style={{height: 22, width: 22}}/>	
-								:
-								<Image source={require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
-							}
+							
+								<Image source={ (rowId == this.state.playingRow && this.state.isPlaying == true) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
 							</TouchableOpacity>
 						</View>
 					:
@@ -165,7 +163,26 @@ class Comment extends Component {
 				<View style = {{flex: 2,}}>
 					<View style = {{flex: 4, }}>
 						<View style={{backgroundColor: 'black', flex: 4, borderWidth: 3, borderColor: 'black'}}>
-							<Image source={{uri: state.params.downloadUrl}} style={{flex: 1,}}/>
+							<TouchableOpacity
+								activeOpacity={1}
+								style={{flex: 1,}}
+								onPress = {() => {
+									Image.getSize(state.params.downloadUrl, (width, height) => {
+										this.setState({
+											isVisible: true,
+											imageWidth: 250,
+											imageHeight: 250 * height / width,
+										})
+									  }, (error) => {
+										this.setState({
+											isVisible: true,
+											imageWidth: 250,
+											imageHeight: 250
+										})
+									  });
+								}}>
+								<Image source={{uri: state.params.downloadUrl}} style={{flex: 1}}/>
+							</TouchableOpacity>
 						</View>
 						<View style={{backgroundColor: 'whitesmoke',flex: 0.8, alignItems: 'center',shadowOffset:{ height: 1,  },shadowColor: 'black', shadowOpacity: 1.0,}}>
 							<Text numberOfLines={1} style={{fontSize: 18}}>{state.params.shoutTitle}</Text>
@@ -200,44 +217,25 @@ class Comment extends Component {
 								{this.props.navigation.state.params.voiceTitle != undefined ?
 								<TouchableOpacity style={{marginLeft: 10}} 
 									onPress = {() => {
-										if(currentSound != null)
+
+										if(this.state.playingRow == undefined && this.state.isPlaying == true)
 										{
-											currentSound.stop();
-											currentSound.release();
-										}
-										
-										if(this.state.playingRow == undefined && this.state.playing == true)
-										{
+											RNAudioStreamer.pause();
 											this.setState({
-												playing:false,
+												isPlaying: false,
 											})
 											return;
 										}
+
+										RNAudioStreamer.setUrl(this.props.navigation.state.params.voiceTitle);
+										RNAudioStreamer.play()
+										
 										this.setState({
 											playingRow: undefined,
+											isPlaying: true,
 										})
-										const sound = new Sound(this.props.navigation.state.params.voiceTitle, '', error => callback(error, sound));
-										this.setState({
-											playing: true,
-										})
-										
-										const callback = (error, sound) => {
-											if (error || this.state.playing == false) {
-												return;
-											}
-											currentSound = sound;
-											sound.play(() => {
-												this.setState({
-													playing: false,
-												})
-												sound.release();
-											});
-										};
 								}}>
-								{
-								
-									<Image source={(this.state.playing == true && this.state.playingRow == undefined) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
-								}
+								<Image source={(this.state.isPlaying == true && this.state.playingRow == undefined) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>
 								</TouchableOpacity>
 								:
 								null
@@ -301,12 +299,18 @@ class Comment extends Component {
 						</View>
 					</View>
 				</View>
+				
+				<ImageView
+					source={{uri: state.params.downloadUrl}}
+					imageWidth={this.state.imageWidth}
+					imageHeight={this.state.imageHeight}
+					isVisible={this.state.isVisible}
+					onClose={this.onImageClose}
+				/>
 			</View>
 		);
 	}
 }
-
-const currentSound = null;
 
 const styles = StyleSheet.create({
 	container: {

@@ -40,7 +40,6 @@ class Splash extends Component {
 
 	
 	componentDidMount() {
-		
 		firebaseApp.auth().onAuthStateChanged((user) => {
 			if (user) {
 				var userId = firebaseApp.auth().currentUser.uid;

@@ -58,7 +58,8 @@ class HomeGroup extends Component {
                 item.groupName != 'lastOneGroup' ?
                     <TouchableOpacity style={{backgroundColor: 'black', justifyContent:'center', alignItems:'center', width: 200, height: 100}}
                         onPress = {() => {
-                            this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey});
+                            if(item.groupName != undefined && item.groupKey != undefined)
+                                this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey});
                         }}>
                         {
                             item.thumbLink != undefined ?

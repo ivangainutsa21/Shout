@@ -7,11 +7,12 @@ import {
 import { connect } from "react-redux";
 import { NavigationActions } 		from 'react-navigation';
 import {AudioRecorder, AudioUtils} 	from 'react-native-audio';
-import Sound 		from 'react-native-sound';
-import ImagePicker 	from 'react-native-image-picker';
-import Spinner 		from 'react-native-loading-spinner-overlay';
-import OneSignal 	from 'react-native-onesignal';
-import RNFetchBlob 	from 'react-native-fetch-blob';
+import Sound 			from 'react-native-sound';
+import ImagePicker 		from 'react-native-image-picker';
+import Spinner 			from 'react-native-loading-spinner-overlay';
+import OneSignal 		from 'react-native-onesignal';
+import RNFetchBlob 		from 'react-native-fetch-blob';
+import ImageResizer 	from 'react-native-image-resizer';
 
 import { firebaseApp } 		from '../firebase';
 import srcLoginBackground 	from '../images/postbackground.png';
@@ -25,13 +26,16 @@ class Post extends Component {
 		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
 		
 		this.state = {
-			postUrl: null,
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 			shoutTitle: null,
 			userName: '',
 			isVoiceTitle: false,
 			isUploading: false,
 			isPlaying: false,
+
+			thumbnail: null,
+			width: null,
+			height: null,
 		};
 	}
 
@@ -82,7 +86,8 @@ class Post extends Component {
 		.catch((error) => {
 		})
 	}
-	postShout = () => {
+	
+	postShout () {
 		var date = new Date();
 		var uploadName = 'post' + 
 			date.getUTCFullYear().toString() + '_' +
@@ -95,16 +100,15 @@ class Post extends Component {
 		var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "June",
 			"July", "Aug", "Sep", "Oct", "Nov", "Dec"
 		];
-	
 		var postDate = date.getDate().toString() + 'th of ' + monthNames[date.getMonth()];
-		const image = this.state.postUrl.uri
+		const image = this.state.thumbnail
 		const Blob = RNFetchBlob.polyfill.Blob
 		const fs = RNFetchBlob.fs
 		window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
 		window.Blob = Blob
 	
 		let uploadBlob = null
-		const imageRef = firebaseApp.storage().ref('posts').child(uploadName + '.jpg')
+		const imageRef = firebaseApp.storage().ref('images').child(uploadName + '.jpg')
 		let mime = 'image/jpg'
 		fs.readFile(image, 'base64')
 			.then((data) => {
@@ -119,7 +123,7 @@ class Post extends Component {
 			return imageRef.getDownloadURL();
 		})
 		.then((url) => {
-			ToastAndroid.show('Your shout has been posted successfully', ToastAndroid.LONG);
+			
 			firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).set({
 				filename: uploadName + '.jpg',
 				downloadUrl: url,
@@ -129,26 +133,31 @@ class Post extends Component {
 				likes: 0,
 				date: postDate,
 				playerIds: this.props.playerIds,
-			});
+			})
+			.then(() => {
+				ToastAndroid.show('Your shout has been posted successfully', ToastAndroid.LONG);
+				this.setState({
+					isUploading: false,
+				})
+			})
 
 			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
 				thumbLink : url,
 			})
-			
+
 			this.uploadVoiceTitle(uploadName);
-			this.setState({
-				isUploading: false,
-			})
 
 			let data = []; // some array as payload
 			let contents = {
 				'en': this.state.userName + ' just shouted!'
 			}
+			
 			firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
 				snap.forEach((child) => {
 					OneSignal.postNotification(contents, data, child.key);
 				});
 			});
+			
 			this.props.navigation.goBack();
 		})
 		.catch((error) => {
@@ -180,7 +189,7 @@ class Post extends Component {
 				</View>
 				<View style={{flex: 3, paddingHorizontal: 10}}>
 					<TouchableOpacity 
-						style={[this.state.postUrl == null ? styles.button : null, style={backgroundColor: 'black',flex: 4}]}
+						style={[this.state.thumbnail == null ? styles.button : null, style={backgroundColor: 'black',flex: 4}]}
 						onPress = {() => {
 							ImagePicker.showImagePicker(options, (response) => {
 								console.log('Response = ', response);
@@ -195,18 +204,24 @@ class Post extends Component {
 									console.log('User tapped custom button: ', response.customButton);
 								}
 								else {
-									let source = { uri: response.uri };
-									this.setState({
-										postUrl: source
-									})
+									ImageResizer.createResizedImage(response.uri, 1024, 1024, 'JPEG', 100)
+									.then(({uri}) => {
+									  	this.setState({
+											thumbnail: uri
+										})
+									}).catch((err) => {
+										this.setState({
+										  	thumbnail: null,
+									  })
+									});
 								}
 							});	
 						}}>
 						{
-						this.state.postUrl == null ?
+						this.state.thumbnail == null ?
 							<Image source={require('../images/addimage.png')} style={{height: 60, width: 60}}/>
 							:
-							<Image source={this.state.postUrl} style={{flex: 1,borderWidth: 3, borderColor: 'black'}}/>
+							<Image source={{uri: this.state.thumbnail}} style={{flex: 1,borderWidth: 3, borderColor: 'black'}}/>
 						}
 					</TouchableOpacity>
 					<View style={{backgroundColor: 'whitesmoke', flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent:'center', }}>
@@ -293,7 +308,7 @@ class Post extends Component {
 						<TouchableOpacity 
 							style={[styles.button, {marginTop: 5,}]}
 							onPress = {() => {
-								if(this.state.postUrl == null || this.state.shoutTitle == null)
+								if(this.state.thumbnail == null || this.state.shoutTitle == null)
 								{
 									alert("Fill required fields.");
 									return;
@@ -302,7 +317,6 @@ class Post extends Component {
 									isUploading: true,
 								})
 								this.postShout();
-								
 								setTimeout(() => {
 
 									if(this.state.isUploading == true)

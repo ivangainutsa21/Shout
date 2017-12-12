@@ -169,24 +169,29 @@ class NewGroup extends Component {
                                 this.setState({
                                     isUploading: true,
                                 })
-                                firebaseApp.database().ref().child('groups').once('value', (snap, b) => {
-                                    
-                                    var isAlready = false;
-                                    snap.forEach((child) => {
-                                        console.log(child.val().groupName);
-                                        if(child.val().groupName == this.state.groupName)
-                                        {
-                                            this.setState({
-                                                isUploading: false,
-                                            })
-                                            isAlready = true;
-                                            alert('The group name already exist');
-                                            return;
-                                        }
+                                if(this.state.value == 'public') {
+                                    firebaseApp.database().ref().child('groups').once('value', (snap, b) => {
+                                        
+                                        var isAlready = false;
+                                        snap.forEach((child) => {
+                                            console.log(child.val().groupName);
+                                            if(child.val().groupName == this.state.groupName)
+                                            {
+                                                this.setState({
+                                                    isUploading: false,
+                                                })
+                                                isAlready = true;
+                                                alert('The group name already exist');
+                                                return;
+                                            }
+                                        })
+                                        if(isAlready == false)
+                                            this.createNewGroup();
                                     })
-                                    if(isAlready == false)
-                                        this.createNewGroup();
-                                })
+                                } else {
+                                    this.createNewGroup();
+                                }
+
                             }}>
                             <Image source={require('../images/newGroup.png')} style={{width: 24, height: 24, }}/>
                             <Text style = {{fontSize: 22, backgroundColor: 'transparent', color: 'black', marginLeft: 10}}>Create Group</Text>
