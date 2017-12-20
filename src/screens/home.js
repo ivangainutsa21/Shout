@@ -1,15 +1,12 @@
 import React, { Component } from 'react';
 import {
-	StyleSheet, View,TouchableOpacity, Text, ImageBackground, Image, ListView,DeviceEventEmitter
+	StyleSheet, View,TouchableOpacity, Text, ImageBackground, Image, ListView,DeviceEventEmitter, BackHandler,
 } from 'react-native';
-import { connect } from "react-redux";
-import OneSignal 	from 'react-native-onesignal';
-import Sound 		from 'react-native-sound';
 import RNAudioStreamer from 'react-native-audio-streamer';
 
 import { firebaseApp } 		from '../firebase'
 
-class Home extends Component {
+export default class Home extends Component {
 	constructor(props) {
 		super(props);
 		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
@@ -33,10 +30,12 @@ class Home extends Component {
 		header: null
 	};
 
+	componentWillUnmount() {
+		BackHandler.removeEventListener('hardwareBackPress', this.onBackPress.bind(this));
+	}
+	
 	componentDidMount() {
-		firebaseApp.database().ref('playerIds/').child(this.props.playerIds).set({
-			fullName: this.props.fullName,
-		})
+		BackHandler.addEventListener('hardwareBackPress', this.onBackPress.bind(this));
 		firebaseApp.database().ref().child('posts').child(this.props.navigation.state.params.groupName).on('value', (snap) => {
             var workshops = [];
             snap.forEach((child) => {
@@ -57,6 +56,9 @@ class Home extends Component {
 			});
 		});
 	}
+	onBackPress() {
+		RNAudioStreamer.pause();
+	}
 	renderRow(item, sectionId, rowId){
         return(
 			<View style={{backgroundColor: 'whitesmoke', paddingBottom: 20}}>
@@ -66,7 +68,7 @@ class Home extends Component {
 							this.props.navigation.navigate('comment', {postName: item.postName, downloadUrl: item.downloadUrl, shoutTitle: item.shoutTitle, userName: item.userName, date: item.date, voiceTitle: item.voiceTitle, groupName: this.props.navigation.state.params.groupName,});
 						}
 					}}>
-					<View style = {{shadowOffset:{ height: 1,  },shadowColor: 'black', shadowOpacity: 1.0,}}>
+					<View style = {{}}>
 						<View style={{backgroundColor: 'black', height: 250, borderWidth: 3, borderColor: 'black'}}>
 							<Image source={{uri: item.downloadUrl}} style={{flex: 1, }}/>
 						</View>
@@ -113,6 +115,7 @@ class Home extends Component {
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity style={{}} 
 						onPress = {() => {
+							RNAudioStreamer.pause();
 							this.props.navigation.goBack();
 					}}>
 						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
@@ -161,12 +164,3 @@ const styles = StyleSheet.create({
 		backgroundColor: 'aliceblue',
 	},
 });
-
-function mapStateToProps(state) {
-	return {
-	  playerIds: state.getUserInfo.playerIds,
-	  fullName: state.getUserInfo.fullName,
-	};
-}
-
-export default connect(mapStateToProps)(Home);

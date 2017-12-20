@@ -19,6 +19,7 @@ import {AudioRecorder, AudioUtils} from 'react-native-audio';
 import RNFetchBlob 			    from 'react-native-fetch-blob'
 import { firebaseApp } 		    from '../firebase';
 import { getRecordingStatus }   from '../actions'
+import OneSignal 			from 'react-native-onesignal';
 
 class AudioPlayer extends Component {
     state = {
@@ -254,6 +255,20 @@ class AudioPlayer extends Component {
                                             comments ++;
                                             firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).update({
                                                 comments: comments,
+                                            })
+                                            .then(() => {
+
+												let data = { 'headings': 'Hello',  }; // some array as payload
+												let contents = {
+													'en': this.props.myName + ' said something'
+												}
+                                                firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
+													snap.forEach((child) => {
+														if(child.val().fullName == this.props.postUserName) {
+															OneSignal.postNotification(contents, data, child.key);
+														}
+													});
+												});
                                             })
                                         })
                                         .catch((error) => {

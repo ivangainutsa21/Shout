@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	View
+	View, Text
 } from 'react-native';
 import { connect } from "react-redux";
 import { NavigationActions } from 'react-navigation'
@@ -40,6 +40,7 @@ class Splash extends Component {
 
 	
 	componentDidMount() {
+		
 		firebaseApp.auth().onAuthStateChanged((user) => {
 			if (user) {
 				var userId = firebaseApp.auth().currentUser.uid;

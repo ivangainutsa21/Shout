@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
 	StyleSheet, TextInput, View, TouchableOpacity, Text, ImageBackground, Image, ListView,
-	Platform,	PermissionsAndroid, ToastAndroid,
+	Platform,	PermissionsAndroid, ToastAndroid, BackHandler
 } from 'react-native';
 import { connect } from "react-redux";
 import { NavigationActions } 		from 'react-navigation';
@@ -39,16 +39,27 @@ class Post extends Component {
 		};
 	}
 
-	componentDidMount() {
-		this.setState({
-			userName: store.getState().getUserInfo.fullName,
-		})
-	}
 
 	static navigationOptions = {
 		header: null
 	};
 
+	componentWillUnmount() {
+		BackHandler.removeEventListener('hardwareBackPress', this.onBackPress.bind(this));
+	}
+
+	componentDidMount() {
+		BackHandler.addEventListener('hardwareBackPress', this.onBackPress.bind(this));
+		this.setState({
+			userName: store.getState().getUserInfo.fullName,
+		})
+	}
+
+	onBackPress() {
+		if(currentSound != null) {
+			currentSound.stop();
+		}
+	}
 	addZero = (i) =>{
 		if(i < 10){
 			i = '0' + i;
@@ -101,7 +112,7 @@ class Post extends Component {
 			"July", "Aug", "Sep", "Oct", "Nov", "Dec"
 		];
 		var postDate = date.getDate().toString() + 'th of ' + monthNames[date.getMonth()];
-		const image = this.state.thumbnail
+		const image = Platform.OS === 'ios' ? this.state.thumbnail.replace('file://', '') : this.state.thumbnail;
 		const Blob = RNFetchBlob.polyfill.Blob
 		const fs = RNFetchBlob.fs
 		window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
@@ -135,7 +146,8 @@ class Post extends Component {
 				playerIds: this.props.playerIds,
 			})
 			.then(() => {
-				ToastAndroid.show('Your shout has been posted successfully', ToastAndroid.LONG);
+				if(Platform.OS === 'android')
+					ToastAndroid.show('Your shout has been posted successfully', ToastAndroid.LONG);
 				this.setState({
 					isUploading: false,
 				})
@@ -147,18 +159,21 @@ class Post extends Component {
 
 			this.uploadVoiceTitle(uploadName);
 
-			let data = []; // some array as payload
-			let contents = {
-				'en': this.state.userName + ' just shouted!'
-			}
-			
-			firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
-				snap.forEach((child) => {
-					OneSignal.postNotification(contents, data, child.key);
-				});
-			});
-			
-			this.props.navigation.goBack();
+
+			fetch('https://onesignal.com/api/v1/notifications', {  
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					"Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+				},
+				body: JSON.stringify({
+					app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+					included_segments: ["All"],
+					data: {"groupKey": this.props.navigation.state.params.groupKey, "groupName": this.props.navigation.state.params.groupName},
+					headings:{"en": "New Post"},
+					contents: {"en": this.state.userName + ' just shouted!'},
+				})
+			})
 		})
 		.catch((error) => {
 		})
@@ -181,6 +196,10 @@ class Post extends Component {
 					
 					<TouchableOpacity
 						onPress = {() => {
+							if(currentSound != null)
+							{
+								currentSound.stop();
+							}
 							this.props.navigation.goBack();
 						}}>
 						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	

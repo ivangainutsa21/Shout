@@ -3,7 +3,9 @@ import {
 	StyleSheet, View,TouchableOpacity, Text, TextInput, Image, ListView
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
+import OneSignal 	from 'react-native-onesignal';
 
+import { connect } from "react-redux";
 import { firebaseApp } 		from '../firebase'
 import store from '../store'
 
@@ -20,16 +22,51 @@ class HomeGroup extends Component {
             
             groups: [],
             groupImage: [],
+            nfGroupName: '',
+            nfGroupKey: '',
         }
 
-		this.renderRow = this.renderRow.bind(this);
+        this.renderRow = this.renderRow.bind(this);
+        this.onOpened = this.onOpened.bind(this);
 	}
 
 	static navigationOptions = {
 		header: null
     };
     
+    componentWillUnmount() {
+        OneSignal.removeEventListener('opened', this.onOpened);
+    }
+
+    onOpened(openResult) {
+        /*
+        this.setState({
+            nfGroupName: openResult.notification.payload.additionalData.groupName,
+            nfGroupKey: openResult.notification.payload.additionalData.groupKey
+        })
+        if(openResult.notification.payload.additionalData.groupKey != undefined && openResult.notification.payload.additionalData.groupName != undefined) {
+            console.log('yes');
+            this.props.navigation.navigate('home', {
+                groupName: openResult.notification.payload.additionalData.groupName, 
+                groupKey: openResult.notification.payload.additionalData.groupKey});
+        } else {
+            console.log('no');
+        }
+        */
+    }
+
+    componentDidMount() {
+
+    }
 	componentWillMount() {
+        OneSignal.addEventListener('opened', this.onOpened);
+
+        var userId = firebaseApp.auth().currentUser.uid;
+		firebaseApp.database().ref('playerIds/').child(this.props.playerIds).set({
+            fullName: this.props.fullName,
+            userId: userId,
+        })
+        
         var userId = firebaseApp.auth().currentUser.uid;
         firebaseApp.database().ref().child('groups').on('value', (snap) => {
             var groups = [];
@@ -95,6 +132,8 @@ class HomeGroup extends Component {
 					</TouchableOpacity>
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black',}}>Shout Groups</Text>
 				</View>
+                {
+                    /*
                 <View style={{flexDirection: 'row', marginTop: 20, marginHorizontal: 20, alignItems: 'center'}}>
                     <TextInput
                         style={styles.input}
@@ -108,6 +147,8 @@ class HomeGroup extends Component {
                     </TextInput>
                     <Image source={require('../images/search.png')} style={{width: 24, height: 24, marginLeft: -32, marginRight: 8}}/>
                 </View>
+                */
+                }
                 <Text style = {styles.text}>Shout Groups</Text>
                 <View style={{flex: 1, marginTop: 50, }}>
                     <ListView
@@ -150,4 +191,12 @@ const styles = StyleSheet.create({
     }
 });
 
-export default HomeGroup;
+
+function mapStateToProps(state) {
+	return {
+	  playerIds: state.getUserInfo.playerIds,
+	  fullName: state.getUserInfo.fullName,
+	};
+}
+
+export default connect(mapStateToProps)(HomeGroup);

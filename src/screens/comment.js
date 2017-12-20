@@ -1,17 +1,17 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, Image, ListView,
+	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, ListView, Image,
 	Platform, PermissionsAndroid, ToastAndroid,Alert, Keyboard,DeviceEventEmitter,
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import {
 	AudioRecorder, AudioUtils
 } from 'react-native-audio';
-import Sound 				from 'react-native-sound';
 import ImageView 			from 'react-native-image-view';
 import ImageResizer 		from 'react-native-image-resizer';
 import RNAudioStreamer 		from 'react-native-audio-streamer';
+import OneSignal 			from 'react-native-onesignal';
 
 import RNFetchBlob 			from 'react-native-fetch-blob'
 import { firebaseApp } 		from '../firebase';
@@ -127,7 +127,7 @@ class Comment extends Component {
 									})
 							}}>
 							
-								<Image source={ (rowId == this.state.playingRow && this.state.isPlaying == true) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
+								<ImageBackground source={ (rowId == this.state.playingRow && this.state.isPlaying == true) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>	
 							</TouchableOpacity>
 						</View>
 					:
@@ -154,9 +154,11 @@ class Comment extends Component {
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity
 						onPress = {() => {
+
+							RNAudioStreamer.pause();
 							this.props.navigation.dispatch(backAction);
 					}}>
-						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+						<ImageBackground source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
 					</TouchableOpacity>
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>Shout!</Text>
 				</View>
@@ -181,10 +183,10 @@ class Comment extends Component {
 										})
 									  });
 								}}>
-								<Image source={{uri: state.params.downloadUrl}} style={{flex: 1}}/>
+								<ImageBackground source={{uri: state.params.downloadUrl}} style={{flex: 1}}/>
 							</TouchableOpacity>
 						</View>
-						<View style={{backgroundColor: 'whitesmoke',flex: 0.8, alignItems: 'center',shadowOffset:{ height: 1,  },shadowColor: 'black', shadowOpacity: 1.0,}}>
+						<View style={{backgroundColor: 'whitesmoke',flex: 0.8, alignItems: 'center',}}>
 							<Text numberOfLines={1} style={{fontSize: 18}}>{state.params.shoutTitle}</Text>
 							<View style = {{flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
 								<Text style={{fontSize: 12, color: 'darkgray', }}>{state.params.userName}, {state.params.date}</Text>
@@ -209,9 +211,9 @@ class Comment extends Component {
 									}}>
 									{
 									this.state.likeAvaialbe ?
-										<Image source={require('../images/heart.png')} style={{height: 30, width: 30}}/>
+										<ImageBackground source={require('../images/heart.png')} style={{height: 30, width: 30}}/>
 										:
-										<Image source={require('../images/heartdisabled.png')} style={{height: 30, width: 30}}/>
+										<ImageBackground source={require('../images/heartdisabled.png')} style={{height: 30, width: 30}}/>
 									}
 								</TouchableOpacity>
 								{this.props.navigation.state.params.voiceTitle != undefined ?
@@ -235,7 +237,7 @@ class Comment extends Component {
 											isPlaying: true,
 										})
 								}}>
-								<Image source={(this.state.isPlaying == true && this.state.playingRow == undefined) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>
+								<ImageBackground source={(this.state.isPlaying == true && this.state.playingRow == undefined) ? require('../images/stop-button.png') : require('../images/play-button.png')} style={{height: 22, width: 22}}/>
 								</TouchableOpacity>
 								:
 								null
@@ -265,7 +267,7 @@ class Comment extends Component {
 							/>
 							{
 							this.state.comment == '' ?
-								<AudioPlayer postName = {this.props.navigation.state.params.postName} groupName = {this.props.navigation.state.params.groupName}/>
+								<AudioPlayer postName = {this.props.navigation.state.params.postName} groupName = {this.props.navigation.state.params.groupName} postUserName = {this.props.navigation.state.params.userName} myName = {this.props.fullName}/>
 								:
 								<TouchableOpacity
 									onPress = {() => {
@@ -289,11 +291,24 @@ class Comment extends Component {
 											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).update({
 												comments: comments,
 											})
+											.then(() => {
+												let data = { 'headings': 'Hello',  }; // some array as payload
+												let contents = {
+													'en': this.props.fullName + ' commented'
+												}
+												firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
+													snap.forEach((child) => {
+														if(child.val().fullName == this.props.navigation.state.params.userName) {
+															OneSignal.postNotification(contents, data, child.key);
+														}
+													});
+												});
+											})
 										})
 										.catch((error) => {
 										})
 									}}>
-									<Image source={require('../images/postshout.png')} style={{ height: 50, width: 50}}/>
+									<ImageBackground source={require('../images/postshout.png')} style={{ height: 50, width: 50}}/>
 								</TouchableOpacity>
 							}
 						</View>

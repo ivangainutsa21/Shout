@@ -37,9 +37,6 @@ const RootNavigator = StackNavigator({
 	signup: {
 		screen: Signup, 
 	},
-	post: {
-		screen: Post, 
-	},
 	home: {
 		screen: Home,
 	},
@@ -54,6 +51,9 @@ const RootNavigator = StackNavigator({
 	},
 	homeGroup: {
 		screen: homeDrawer,
+	},
+	post: {
+		screen: Post, 
 	},
 	newGroup: {
 		screen: NewGroup,
