@@ -65,11 +65,20 @@ export default class Home extends Component {
 				<TouchableOpacity style={{flex: 1, }} activeOpacity={1}
 					onPress = {() => {
 						if(item.postName != null){
-							this.props.navigation.navigate('comment', {postName: item.postName, downloadUrl: item.downloadUrl, shoutTitle: item.shoutTitle, userName: item.userName, date: item.date, voiceTitle: item.voiceTitle, groupName: this.props.navigation.state.params.groupName,});
+							this.props.navigation.navigate('comment', {
+								postName: item.postName, 
+								downloadUrl: item.downloadUrl, 
+								shoutTitle: item.shoutTitle, 
+								userName: item.userName, 
+								date: item.date, 
+								voiceTitle: item.voiceTitle, 
+								groupName: this.props.navigation.state.params.groupName,
+								groupKey: this.props.navigation.state.params.groupKey,
+							});
 						}
 					}}>
 					<View style = {{}}>
-						<View style={{backgroundColor: 'black', height: 250, borderWidth: 3, borderColor: 'black'}}>
+						<View style={{backgroundColor: 'black', height: 250, }}>
 							<Image source={{uri: item.downloadUrl}} style={{flex: 1, }}/>
 						</View>
 					</View>

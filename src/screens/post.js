@@ -169,11 +169,17 @@ class Post extends Component {
 				body: JSON.stringify({
 					app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
 					included_segments: ["All"],
-					data: {"groupKey": this.props.navigation.state.params.groupKey, "groupName": this.props.navigation.state.params.groupName},
+					//include_player_ids: ['bfb14cb2-dd04-4cd9-80c3-0fbe2edbd71d', '9e214a70-19db-4774-85ea-ab6a07dba4a8', 'b92880ae-7f02-4732-aa90-78801f8668f2', '35dc8b40-3d8b-4259-8a04-cc9bb3287eb1'],
+					data: {
+						'nfType': 'nf_newShout',
+						"groupKey": this.props.navigation.state.params.groupKey, 
+						"groupName": this.props.navigation.state.params.groupName
+					},
 					headings:{"en": "New Post"},
 					contents: {"en": this.state.userName + ' just shouted!'},
 				})
 			})
+			this.props.navigation.goBack();
 		})
 		.catch((error) => {
 		})

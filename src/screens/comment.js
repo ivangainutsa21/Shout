@@ -164,7 +164,7 @@ class Comment extends Component {
 				</View>
 				<View style = {{flex: 2,}}>
 					<View style = {{flex: 4, }}>
-						<View style={{backgroundColor: 'black', flex: 4, borderWidth: 3, borderColor: 'black'}}>
+						<View style={{backgroundColor: 'black', flex: 4, }}>
 							<TouchableOpacity
 								activeOpacity={1}
 								style={{flex: 1,}}
@@ -292,14 +292,33 @@ class Comment extends Component {
 												comments: comments,
 											})
 											.then(() => {
-												let data = { 'headings': 'Hello',  }; // some array as payload
-												let contents = {
-													'en': this.props.fullName + ' commented'
-												}
 												firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
 													snap.forEach((child) => {
 														if(child.val().fullName == this.props.navigation.state.params.userName) {
-															OneSignal.postNotification(contents, data, child.key);
+															fetch('https://onesignal.com/api/v1/notifications', {  
+																method: 'POST',
+																headers: {
+																	'Content-Type': 'application/json',
+																	"Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+																},
+																body: JSON.stringify({
+																	app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+																	include_player_ids: [child.key],
+																	data: {
+																		'nfType': 'nf_comment',
+																		'postName':  this.props.navigation.state.params.postName, 
+																		'downloadUrl': this.props.navigation.state.params.downloadUrl, 
+																		'shoutTitle': this.props.navigation.state.params.shoutTitle, 
+																		'userName': this.props.navigation.state.params.userName, 
+																		'date': this.props.navigation.state.params.date, 
+																		'voiceTitle': this.props.navigation.state.params.voiceTitle, 
+																		'groupName': this.props.navigation.state.params.groupName,
+																		'groupKey': this.props.navigation.state.params.groupKey,
+																	},
+																	headings:{"en": "A new comment on your shout"},
+																	contents: {'en': this.props.fullName + ' commented'},
+																})
+															})
 														}
 													});
 												});

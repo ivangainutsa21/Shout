@@ -50,8 +50,8 @@ class NewGroup extends Component {
             this.addZero(date.getUTCMilliseconds());
             if(this.state.value == 'private') {
                 var userId = firebaseApp.auth().currentUser.uid;
-                firebaseApp.database().ref().child('groups').child(groupName).update({
-                    privacy: userId,
+                firebaseApp.database().ref().child('groups').child(groupName).child('privacy').push({
+                    userId
                 });
             }
             firebaseApp.database().ref().child('groups').child(groupName).update({

@@ -8,41 +8,96 @@ import OneSignal from 'react-native-onesignal';
 import { firebaseApp } from './src/firebase';
 import RootNavigator from './src/screens/router';
 
-import { registerPlayerIds } from './src/actions'
+import { registerPlayerIds, save_nf } from './src/actions'
+import { NavigationActions } from 'react-navigation'
 
 class App extends Component<{}> {
 
 	constructor(props) {
 		super(props);
 		
-		this.onIds = this.onIds.bind(this);
+    this.onIds = this.onIds.bind(this);
+    this.onOpened = this.onOpened.bind(this);
 	}
 	
 	componentWillMount() {
-        OneSignal.addEventListener('ids', this.onIds);
-  }
+		OneSignal.addEventListener('opened', this.onOpened);
+		OneSignal.addEventListener('ids', this.onIds);
+  	}
 
     componentWillUnmount() {
-        OneSignal.removeEventListener('ids', this.onIds);
+			OneSignal.removeEventListener('opened', this.onOpened);
+			OneSignal.removeEventListener('ids', this.onIds);
+	}
+    onIds(device) {
+      	this.props.dispatch(registerPlayerIds(device.userId));
     }
 
-    onIds(device) {
-      this.props.dispatch(registerPlayerIds(device.userId));
-    }
-  render() {
-    return (
-      <View style={styles.container}>
-		    <RootNavigator />
-      </View>
-    );
-  }
+    onOpened(openResult) {
+		this.props.dispatch(save_nf(openResult.notification.payload.additionalData));
+		if(firebaseApp.auth().currentUser == null)
+			return;
+		if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_newShout') {	
+			let resetNewPost = NavigationActions.reset({
+				index: 1,
+				actions: [
+				  NavigationActions.navigate({ routeName: 'homeGroup'}),
+				  NavigationActions.navigate({ 
+					routeName: 'home', 
+					params:{
+							groupName: openResult.notification.payload.additionalData.groupName, 
+							groupKey: openResult.notification.payload.additionalData.groupKey
+						}
+					}),
+				]
+			})
+			this.navigator && this.navigator.dispatch(resetNewPost);
+		} 
+		if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_comment') {
+			let resetComment = NavigationActions.reset({
+				index: 2,
+				actions: [
+				  NavigationActions.navigate({ routeName: 'homeGroup'}),
+				  NavigationActions.navigate({ 
+						routeName: 'home', 
+						params:{
+							  groupName: openResult.notification.payload.additionalData.groupName, 
+							  groupKey: openResult.notification.payload.additionalData.groupKey,
+						  }
+					  }),
+				  NavigationActions.navigate({ 
+						routeName: 'comment', 
+						params:{
+							postName:  openResult.notification.payload.additionalData.postName, 
+							downloadUrl: openResult.notification.payload.additionalData.downloadUrl, 
+							shoutTitle: openResult.notification.payload.additionalData.shoutTitle, 
+							userName: openResult.notification.payload.additionalData.userName, 
+							date: openResult.notification.payload.additionalData.date, 
+							voiceTitle: openResult.notification.payload.additionalData.voiceTitle,
+							groupName: openResult.notification.payload.additionalData.groupName, 
+							groupKey: openResult.notification.payload.additionalData.groupKey,
+						}
+					}),
+				]
+			})
+			this.navigator && this.navigator.dispatch(resetComment);
+		}
+	}
+
+	render() {
+		return (
+			<View style={styles.container}>
+				<RootNavigator ref={nav => {this.navigator = nav; }}/>
+			</View>
+		);
+	}
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5FCFF',
-  },
+	container: {
+		flex: 1,
+		backgroundColor: '#F5FCFF',
+	},
 });
 
 export default connect()(App);

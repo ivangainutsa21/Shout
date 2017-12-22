@@ -22,57 +22,39 @@ class HomeGroup extends Component {
             
             groups: [],
             groupImage: [],
-            nfGroupName: '',
-            nfGroupKey: '',
         }
-
         this.renderRow = this.renderRow.bind(this);
-        this.onOpened = this.onOpened.bind(this);
 	}
 
 	static navigationOptions = {
 		header: null
     };
     
-    componentWillUnmount() {
-        OneSignal.removeEventListener('opened', this.onOpened);
-    }
-
-    onOpened(openResult) {
-        /*
-        this.setState({
-            nfGroupName: openResult.notification.payload.additionalData.groupName,
-            nfGroupKey: openResult.notification.payload.additionalData.groupKey
-        })
-        if(openResult.notification.payload.additionalData.groupKey != undefined && openResult.notification.payload.additionalData.groupName != undefined) {
-            console.log('yes');
-            this.props.navigation.navigate('home', {
-                groupName: openResult.notification.payload.additionalData.groupName, 
-                groupKey: openResult.notification.payload.additionalData.groupKey});
-        } else {
-            console.log('no');
-        }
-        */
-    }
-
-    componentDidMount() {
-
-    }
 	componentWillMount() {
-        OneSignal.addEventListener('opened', this.onOpened);
-
         var userId = firebaseApp.auth().currentUser.uid;
 		firebaseApp.database().ref('playerIds/').child(this.props.playerIds).set({
             fullName: this.props.fullName,
             userId: userId,
         })
         
-        var userId = firebaseApp.auth().currentUser.uid;
+		firebaseApp.database().ref('users/').child(userId).update({
+            playerIds: this.props.playerIds,
+        })
+
         firebaseApp.database().ref().child('groups').on('value', (snap) => {
             var groups = [];
             snap.forEach((child) => {
-                if(child.val().privacy == undefined || child.val().privacy == userId)
-                {
+                let isGroup = false;
+                
+                firebaseApp.database().ref().child('groups').child(child.key).child('privacy').on('value', (snap) => {
+                    snap.forEach((child) => {
+                        if(child.val().userId == userId)
+                        {
+                            isGroup = true;
+                        }
+                    })
+                })
+                if(child.val().privacy == undefined || isGroup == true) {
                     groups.push({
                         groupKey: child.key,
                         groupName: child.val().groupName,
@@ -87,7 +69,7 @@ class HomeGroup extends Component {
                 dataSource: this.state.dataSource.cloneWithRows(groups)
             });
         })
-	}
+    }
     renderRow(item, sectionId, rowId){
         return(
             <View style={{marginBottom : 30, alignItems: 'center'}}>
@@ -100,7 +82,7 @@ class HomeGroup extends Component {
                         }}>
                         {
                             item.thumbLink != undefined ?
-                                <Image source={{uri: item.thumbLink}} style={{height: 100, width: 200, borderWidth: 1, borderColor: 'black', justifyContent:'center', alignItems:'center'}}>
+                                <Image source={{uri: item.thumbLink}} style={{height: 100, width: 200, justifyContent:'center', alignItems:'center'}}>
                                     <Text style = {{fontSize: 22, backgroundColor: 'transparent', color: 'white', marginLeft: 10}}>{item.groupName}</Text>
                                 </Image>
                                 :
@@ -110,7 +92,8 @@ class HomeGroup extends Component {
                     :
                     <TouchableOpacity 
                         onPress = {() => {
-                            this.props.navigation.navigate('newGroup',);
+                        this.props.navigation.navigate('newGroup',);
+
                     }}>
                         <Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>
                     </TouchableOpacity>
@@ -194,8 +177,8 @@ const styles = StyleSheet.create({
 
 function mapStateToProps(state) {
 	return {
-	  playerIds: state.getUserInfo.playerIds,
-	  fullName: state.getUserInfo.fullName,
+	    playerIds: state.getUserInfo.playerIds,
+        fullName: state.getUserInfo.fullName,
 	};
 }
 

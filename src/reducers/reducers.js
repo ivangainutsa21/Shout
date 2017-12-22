@@ -4,6 +4,7 @@ import {
     REGISTER_PLAYERIDS,
     SAVE_TITLE_RECORD,
     GET_GROUP,
+    SAVE_NF,
 } from '../actions'
 
 const initialState = {
@@ -12,6 +13,7 @@ const initialState = {
     playerIds: '',
     titleRecordPath: '',
     group: [],
+    nf_payload: undefined,
 }
 
 export const getUserInfo = (state = initialState, action) => {
@@ -36,6 +38,8 @@ export const getAppInfo = (state = initialState, action) => {
                 return {...state, recording: 'Recording...'}
         case SAVE_TITLE_RECORD:
             return {...state, titleRecordPath: action.path}
+        case SAVE_NF:
+            return {...state, nf_payload: action.nf_payload}
         default:
             return state;
     }
