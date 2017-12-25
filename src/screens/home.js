@@ -47,6 +47,7 @@ export default class Home extends Component {
 					likes: child.val().likes,
 					date: child.val().date,
 					voiceTitle: child.val().voiceTitle,
+					groupCreator: child.val().groupCreator,
 					postName: child.key,
                 });
 			});
@@ -119,17 +120,18 @@ export default class Home extends Component {
 
 	render() {
 		const { navigate } = this.props.navigation;
+        const userId = firebaseApp.auth().currentUser.uid;
 		return (
 			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
-				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
-					<TouchableOpacity style={{}} 
+				<View style={{height: 80, flexDirection: 'row', justifyContent: 'space-between', /*alignItems:'center',*/ marginLeft: 20}} >
+					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', alignSelf: 'center'}}>{this.props.navigation.state.params.groupName}</Text>
+					<TouchableOpacity style={this.props.navigation.state.params.groupCreator == userId ? null : {display: 'none'}} 
 						onPress = {() => {
-							RNAudioStreamer.pause();
-							this.props.navigation.goBack();
+							this.props.navigation.navigate('newGroup', {title: 'Edit Group', groupName: this.props.navigation.state.params.groupName, privacy: 'private', isEdit: true, groupKey: this.props.navigation.state.params.groupKey});
 					}}>
-						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+						<Image source={require('../images/editGroup.png')} style={{height: 60, width: 60}}/>	
 					</TouchableOpacity>
-					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>{this.props.navigation.state.params.groupName}</Text>
+					
 				</View>
 				<View style = {{flex: 1, backgroundColor: 'aliceblue'}}>
 					<ListView
@@ -139,27 +141,42 @@ export default class Home extends Component {
 					/>
 	
 				</View>
-				<View style = {{backgroundColor:'transparent', flexDirection: 'row', justifyContent:'space-between', paddingHorizontal: 50, alignItems: 'center' , height:40, borderWidth: 1, borderColor: 'black', marginTop: 1}}>
+				<View style = {{backgroundColor:'transparent', flexDirection: 'row', justifyContent:'space-between', paddingHorizontal: 20, alignItems: 'center' , height:50, borderWidth: 1, borderColor: 'black', marginTop: 1}}>
+					<TouchableOpacity
+						style = {{}}
+						onPress = {() => {
+							RNAudioStreamer.pause();
+							this.props.navigation.goBack();
+						}}>
+						<Image source={require('../images/home.png')} style={{width: 32, height: 32,}}/>
+					</TouchableOpacity>
+					<TouchableOpacity
+						style = {{}}
+						onPress = {() => {
+							navigate('notifications');
+						}}>
+						<Image source={require('../images/home_notification.png')} style={{width: 32, height: 32,}}/>
+					</TouchableOpacity>
+					<TouchableOpacity
+						style = {{}}
+						onPress = {() => {
+							navigate('post', {groupName: this.props.navigation.state.params.groupName, groupKey: this.props.navigation.state.params.groupKey, groupCreator: this.props.navigation.state.params.groupCreator});
+						}}>
+						<Image source={require('../images/home_plus.png')} style={{width: 48, height: 48,}}/>
+					</TouchableOpacity>
+					<TouchableOpacity
+						disabled={true}
+						onPress = {() => {
+							//navigate('userProfile');
+						}}>
+						<Image source={require('../images/share.png')} style={{width: 32, height: 32,}}/>
+					</TouchableOpacity>
 					<TouchableOpacity
 						style = {{}}
 						onPress = {() => {
 							navigate('userProfile');
 						}}>
 						<Image source={require('../images/home_user.png')} style={{width: 32, height: 32,}}/>
-					</TouchableOpacity>
-					<TouchableOpacity
-						style = {{}}
-						onPress = {() => {
-							navigate('post', {groupName: this.props.navigation.state.params.groupName, groupKey: this.props.navigation.state.params.groupKey});
-						}}>
-						<Image source={require('../images/home_plus.png')} style={{width: 32, height: 32,}}/>
-					</TouchableOpacity>
-					<TouchableOpacity
-						style = {{}}
-						onPress = {() => {
-							//navigate('homeGroup');
-						}}>
-						<Image source={require('../images/home_notification.png')} style={{width: 32, height: 32,}}/>
 					</TouchableOpacity>
 				</View>
 			</View>

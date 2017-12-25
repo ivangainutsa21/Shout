@@ -40,34 +40,46 @@ class HomeGroup extends Component {
 		firebaseApp.database().ref('users/').child(userId).update({
             playerIds: this.props.playerIds,
         })
-
-        firebaseApp.database().ref().child('groups').on('value', (snap) => {
-            var groups = [];
-            snap.forEach((child) => {
-                let isGroup = false;
-                
-                firebaseApp.database().ref().child('groups').child(child.key).child('privacy').on('value', (snap) => {
-                    snap.forEach((child) => {
-                        if(child.val().userId == userId)
-                        {
-                            isGroup = true;
-                        }
+            firebaseApp.database().ref().child('groups').on('value', (snap) => {
+                var groups = [];
+                snap.forEach((child) => {
+                    let isGroup = false;
+                    
+                    firebaseApp.database().ref().child('groups').child(child.key).child('privacy').on('value', (snap) => {
+                        snap.forEach((child) => {
+                            if(child.val().userId == userId)
+                            {
+                                isGroup = true;
+                            }
+                        })
                     })
+                    if(child.val().privacy == undefined || isGroup == true) {
+                        groups.push({
+                            lastModified: child.val().lastModified,
+                            groupKey: child.key,
+                            groupName: child.val().groupName,
+                            thumbLink: child.val().thumbLink,
+                            groupCreator: child.val().groupCreator,
+                        });
+                    }
                 })
-                if(child.val().privacy == undefined || isGroup == true) {
-                    groups.push({
-                        groupKey: child.key,
-                        groupName: child.val().groupName,
-                        thumbLink: child.val().thumbLink,
-                    });
-                }
-            })
-            groups.push({
-                groupName: 'lastOneGroup',
-            })
-            this.setState({
-                dataSource: this.state.dataSource.cloneWithRows(groups)
-            });
+                
+                groups.sort(function(a, b){
+                    if(a.lastModified != undefined && b.lastModified == undefined) return -1;
+                    if(a.lastModified == undefined && b.lastModified != undefined) return 1;
+                    if(a.lastModified == undefined && b.lastModified == undefined) return 0;
+                    if(a.lastModified < b.lastModified) return 1;
+                    if(a.lastModified > b.lastModified) return -1;
+                    return 0;
+                });
+                
+                groups.push({
+                    groupName: 'lastOneGroup',
+                })
+                console.log(groups);
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(groups)
+                });
         })
     }
     renderRow(item, sectionId, rowId){
@@ -78,7 +90,7 @@ class HomeGroup extends Component {
                     <TouchableOpacity style={{backgroundColor: 'black', justifyContent:'center', alignItems:'center', width: 200, height: 100}}
                         onPress = {() => {
                             if(item.groupName != undefined && item.groupKey != undefined)
-                                this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey});
+                                this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey, groupCreator: item.groupCreator});
                         }}>
                         {
                             item.thumbLink != undefined ?
@@ -92,7 +104,7 @@ class HomeGroup extends Component {
                     :
                     <TouchableOpacity 
                         onPress = {() => {
-                        this.props.navigation.navigate('newGroup',);
+                        this.props.navigation.navigate('newGroup', {title: 'Adding New Group', groupName: undefined, privacy: 'public', isEdit: false,});
 
                     }}>
                         <Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>

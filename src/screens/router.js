@@ -13,6 +13,7 @@ import Comment 			from './comment';
 import Splash 			from './splash';
 import HomeGroup 		from './homeGroup';
 import NewGroup 		from './newGroup';
+import Notifications 	from './notifications';
 
 const homeDrawer = DrawerNavigator({
 		homeGroup: {screen: HomeGroup,},
@@ -57,6 +58,9 @@ const RootNavigator = StackNavigator({
 	},
 	newGroup: {
 		screen: NewGroup,
+	},
+	notifications: {
+		screen: Notifications,
 	},
 });
 

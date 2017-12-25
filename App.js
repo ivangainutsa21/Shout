@@ -34,54 +34,72 @@ class App extends Component<{}> {
     }
 
     onOpened(openResult) {
-		this.props.dispatch(save_nf(openResult.notification.payload.additionalData));
-		if(firebaseApp.auth().currentUser == null)
-			return;
-		if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_newShout') {	
-			let resetNewPost = NavigationActions.reset({
-				index: 1,
-				actions: [
-				  NavigationActions.navigate({ routeName: 'homeGroup'}),
-				  NavigationActions.navigate({ 
-					routeName: 'home', 
-					params:{
-							groupName: openResult.notification.payload.additionalData.groupName, 
-							groupKey: openResult.notification.payload.additionalData.groupKey
-						}
-					}),
-				]
-			})
-			this.navigator && this.navigator.dispatch(resetNewPost);
-		} 
-		if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_comment') {
-			let resetComment = NavigationActions.reset({
-				index: 2,
-				actions: [
-				  NavigationActions.navigate({ routeName: 'homeGroup'}),
-				  NavigationActions.navigate({ 
+		setTimeout(() => {
+			this.props.dispatch(save_nf(openResult.notification.payload.additionalData));
+			if(firebaseApp.auth().currentUser == null)
+				return;
+			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_newShout') {	
+				let resetNewPost = NavigationActions.reset({
+					index: 1,
+					actions: [
+					NavigationActions.navigate({ routeName: 'homeGroup'}),
+					NavigationActions.navigate({ 
 						routeName: 'home', 
 						params:{
-							  groupName: openResult.notification.payload.additionalData.groupName, 
-							  groupKey: openResult.notification.payload.additionalData.groupKey,
-						  }
-					  }),
-				  NavigationActions.navigate({ 
-						routeName: 'comment', 
-						params:{
-							postName:  openResult.notification.payload.additionalData.postName, 
-							downloadUrl: openResult.notification.payload.additionalData.downloadUrl, 
-							shoutTitle: openResult.notification.payload.additionalData.shoutTitle, 
-							userName: openResult.notification.payload.additionalData.userName, 
-							date: openResult.notification.payload.additionalData.date, 
-							voiceTitle: openResult.notification.payload.additionalData.voiceTitle,
-							groupName: openResult.notification.payload.additionalData.groupName, 
-							groupKey: openResult.notification.payload.additionalData.groupKey,
-						}
-					}),
-				]
-			})
-			this.navigator && this.navigator.dispatch(resetComment);
-		}
+								groupName: openResult.notification.payload.additionalData.groupName, 
+								groupKey: openResult.notification.payload.additionalData.groupKey,
+								groupCreator: openResult.notification.payload.additionalData.groupCreator,
+							}
+						}),
+					]
+				})
+				this.navigator && this.navigator.dispatch(resetNewPost);
+			} 
+			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_comment') {
+				console.log(openResult.notification.payload.additionalData.groupCreator);
+				let resetComment = NavigationActions.reset({
+					index: 2,
+					actions: [
+					NavigationActions.navigate({ routeName: 'homeGroup'}),
+					NavigationActions.navigate({ 
+							routeName: 'home', 
+							params:{
+								groupName: openResult.notification.payload.additionalData.groupName, 
+								groupKey: openResult.notification.payload.additionalData.groupKey,
+								groupCreator: openResult.notification.payload.additionalData.groupCreator,
+							}
+						}),
+					NavigationActions.navigate({ 
+							routeName: 'comment', 
+							params:{
+								postName:  openResult.notification.payload.additionalData.postName, 
+								downloadUrl: openResult.notification.payload.additionalData.downloadUrl, 
+								shoutTitle: openResult.notification.payload.additionalData.shoutTitle, 
+								userName: openResult.notification.payload.additionalData.userName, 
+								date: openResult.notification.payload.additionalData.date, 
+								voiceTitle: openResult.notification.payload.additionalData.voiceTitle,
+								groupName: openResult.notification.payload.additionalData.groupName, 
+								groupKey: openResult.notification.payload.additionalData.groupKey,
+								groupCreator: openResult.notification.payload.additionalData.groupCreator,
+							}
+						}),
+					]
+				})
+				this.navigator && this.navigator.dispatch(resetComment);
+			}
+			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_invitation'){
+				let resetNotification = NavigationActions.reset({
+					index: 1,
+					actions: [
+					  NavigationActions.navigate({ routeName: 'homeGroup'}),
+					  NavigationActions.navigate({ 
+							routeName: 'notifications',
+						}),
+					]
+				})
+				this.navigator && this.navigator.dispatch(resetNotification);
+			}
+		}, 1000);
 	}
 
 	render() {

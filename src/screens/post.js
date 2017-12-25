@@ -29,7 +29,6 @@ class Post extends Component {
 			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 			shoutTitle: null,
 			userName: '',
-			isVoiceTitle: false,
 			isUploading: false,
 			isPlaying: false,
 
@@ -134,7 +133,8 @@ class Post extends Component {
 			return imageRef.getDownloadURL();
 		})
 		.then((url) => {
-			
+			var email = firebaseApp.auth().currentUser.email;
+			var userId = firebaseApp.auth().currentUser.uid;
 			firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).set({
 				filename: uploadName + '.jpg',
 				downloadUrl: url,
@@ -144,6 +144,8 @@ class Post extends Component {
 				likes: 0,
 				date: postDate,
 				playerIds: this.props.playerIds,
+				userId: userId,
+				email: email,
 			})
 			.then(() => {
 				if(Platform.OS === 'android')
@@ -156,33 +158,83 @@ class Post extends Component {
 			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
 				thumbLink : url,
 			})
-
-			this.uploadVoiceTitle(uploadName);
-
-
-			fetch('https://onesignal.com/api/v1/notifications', {  
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					"Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
-				},
-				body: JSON.stringify({
-					app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
-					included_segments: ["All"],
-					//include_player_ids: ['bfb14cb2-dd04-4cd9-80c3-0fbe2edbd71d', '9e214a70-19db-4774-85ea-ab6a07dba4a8', 'b92880ae-7f02-4732-aa90-78801f8668f2', '35dc8b40-3d8b-4259-8a04-cc9bb3287eb1'],
-					data: {
-						'nfType': 'nf_newShout',
-						"groupKey": this.props.navigation.state.params.groupKey, 
-						"groupName": this.props.navigation.state.params.groupName
-					},
-					headings:{"en": "New Post"},
-					contents: {"en": this.state.userName + ' just shouted!'},
-				})
+			var date = new Date();
+			var lastModified = date.getUTCFullYear().toString() + '_' +
+			this.addZero(date.getUTCMonth()) +	 '_' +
+			this.addZero(date.getUTCDate()) + '_' +
+			this.addZero(date.getUTCHours()) + '_' +
+			this.addZero(date.getUTCMinutes()) + '_' +
+			this.addZero(date.getUTCSeconds()) + '_' +
+			this.addZero(date.getUTCMilliseconds());
+			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
+				lastModified: lastModified
 			})
+			
+			this.uploadVoiceTitle(uploadName);
+			
+			var allowedUsers = [];
+			var promises = [];
+			firebaseApp.database().ref().child('groups').child(this.props.navigation.state.params.groupKey).child('privacy').on('value', (snap) => {
+				snap.forEach((child) => {
+					promises.push(new Promise((resolve, reject) => {
+						firebaseApp.database().ref().child('users').child(child.val().userId).child('playerIds').on('value', (snap) => {
+							allowedUsers.push(snap.val());
+							resolve();
+						})
+					}));
+				})
+
+				Promise.all(promises).then(() => {
+					if(allowedUsers.length == 0) {
+						fetch('https://onesignal.com/api/v1/notifications', {  
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+								"Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+							},
+							body: JSON.stringify({
+								app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+								included_segments: ["All"],
+								data: {
+									'nfType': 'nf_newShout',
+									"groupKey": this.props.navigation.state.params.groupKey, 
+									"groupName": this.props.navigation.state.params.groupName
+								},
+								headings:{"en": "New Post"},
+								contents: {"en": this.state.userName + ' just shouted!'},
+							})
+						})
+					}
+					if(allowedUsers.length > 0) {
+						fetch('https://onesignal.com/api/v1/notifications', {  
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/json',
+								"Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+							},
+							body: JSON.stringify({
+								app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+								include_player_ids: allowedUsers,
+								data: {
+									'nfType': 'nf_newShout',
+									"groupKey": this.props.navigation.state.params.groupKey, 
+									"groupName": this.props.navigation.state.params.groupName,
+									"groupCreator": this.props.navigation.state.params.groupCreator,
+								},
+								headings:{"en": "New Post"},
+								contents: {"en": this.state.userName + ' just shouted!'},
+							})
+						})
+					}
+				}) 
+			})
+			
+			
 			this.props.navigation.goBack();
 		})
 		.catch((error) => {
 		})
+		
 	}
 
 	render() {
@@ -342,14 +394,13 @@ class Post extends Component {
 									isUploading: true,
 								})
 								this.postShout();
+								
 								setTimeout(() => {
-
-									if(this.state.isUploading == true)
-										ToastAndroid.show('Internet connection problem: Time Out', ToastAndroid.LONG);
 									this.setState({
 										isUploading: false,
 									})
 								}, 10000);
+								
 							}}>
 							<Image source={require('../images/megaphone.png')} style={{width: 32, height: 32, }}/>
 							<Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black',}}>SHOUT!</Text>

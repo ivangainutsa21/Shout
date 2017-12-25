@@ -59,7 +59,8 @@ class Splash extends Component {
 								routeName: 'home', 
 								params:{
 										groupName: this.props.nf_payload.groupName, 
-										groupKey: this.props.nf_payload.groupKey
+										groupKey: this.props.nf_payload.groupKey,
+										groupCreator: this.props.nf_payload.groupCreator,
 									}
 								}),
 							]
@@ -75,6 +76,7 @@ class Splash extends Component {
 									params:{
 										  groupName: this.props.nf_payload.groupName, 
 										  groupKey: this.props.nf_payload.groupKey,
+										  groupCreator: this.props.nf_payload.groupCreator,
 									  }
 								  }),
 							  NavigationActions.navigate({ 
@@ -93,7 +95,18 @@ class Splash extends Component {
 							]
 						})
 						this.props.navigation.dispatch(resetComment);
-					}else {
+					} else if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_invitation'){
+						let resetNotification = NavigationActions.reset({
+							index: 1,
+							actions: [
+							  NavigationActions.navigate({ routeName: 'homeGroup'}),
+							  NavigationActions.navigate({ 
+									routeName: 'notifications',
+								}),
+							]
+						})
+						this.props.navigation.dispatch(resetNotification);
+					} else {
 						this.props.navigation.dispatch(resetHome);
 					}
 				})

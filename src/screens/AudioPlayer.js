@@ -20,6 +20,7 @@ import RNFetchBlob 			    from 'react-native-fetch-blob'
 import { firebaseApp } 		    from '../firebase';
 import { getRecordingStatus }   from '../actions'
 import OneSignal 			from 'react-native-onesignal';
+import comment from './comment';
 
 class AudioPlayer extends Component {
     state = {
@@ -193,13 +194,48 @@ class AudioPlayer extends Component {
                     setTimeout(() => {
                         this.props.dispatch(getRecordingStatus(false));
                         this._stop();
-                        Alert.alert(
-                            'Post recording',
-                            'Are you sure you want to post this recording?',
-                            [
-                                {text: 'Yes', onPress: () => {
+                        //var commentType = 0;
+                        var typePromise;
+                        var commentPromise;
+                        var recordName = null;
+                        if(this.props.comment == '') {
+                            typePromise = new Promise((resolve, reject) => {
+                                Alert.alert(
+                                    'Only recording',
+                                    'Are you sure you want to post just this recording?',
+                                    [
+                                        {text: 'Yes', onPress: () => {
+                                            resolve(1);
+                                        }},
+                                        {text: 'No',  },
+                                    ],
+                                    { cancelable: false }
+                                )
+                            })
+                            
+                        } else {
+                            typePromise = new Promise((resolve, reject) => {
+                                Alert.alert(
+                                    'Comment or Recording',
+                                    'Do you want to post comment or recording?',
+                                    [
+                                        {text: 'Both', onPress: () => {
+                                            resolve(3);
+                                        }},
+                                        {text: 'Comment',  onPress: () => {
+                                            resolve(2);
+                                        }},
+                                        {text: 'Cancel',  },
+                                    ],
+                                    { cancelable: false }
+                                )
+                            })
+                        }
+                        typePromise.then((commentType) => {
+                            commentPromise = new Promise((resolve, reject) => {
+                                if(commentType != 2) {
                                     var date = new Date();
-                                    var recordName = 'record' + 
+                                    recordName = 'record' + 
                                     date.getUTCFullYear().toString() + '_' +
                                     this.addZero(date.getUTCMonth()) +	 '_' +
                                     this.addZero(date.getUTCDate()) + '_' +
@@ -230,57 +266,94 @@ class AudioPlayer extends Component {
                                         return imageRef.getDownloadURL();
                                     })
                                     .then((url) => {
-                                        var userId = firebaseApp.auth().currentUser.uid;
-                                        firebaseApp.database().ref('/users/').child(userId).child('FullName').once('value')
-                                        .then((snapshot) => {
-                                            var d = new Date();
-                                            var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
-                                            firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).child('commentUsers').push({
-                                                userId: userId,
-                                                FullName: snapshot.val(),
-                                                comment: url,
-                                                commentTime: commentTime,
-                                                recordName: recordName,
-                                            })
-                                            ToastAndroid.show('You have commented on this Shout!', ToastAndroid.SHORT);
-                                            this.setState({ comment: '' })
-                                            Keyboard.dismiss();
-                                        })
-                                        .catch((error) => {
-                                        })
-                                        var comments;
-                                        firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).child('comments').once('value')
-                                        .then((snapshot) => {
-                                            comments = snapshot.val();
-                                            comments ++;
-                                            firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).update({
-                                                comments: comments,
-                                            })
-                                            .then(() => {
-
-												let data = { 'headings': 'Hello',  }; // some array as payload
-												let contents = {
-													'en': this.props.myName + ' said something'
-												}
-                                                firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
-													snap.forEach((child) => {
-														if(child.val().fullName == this.props.postUserName) {
-															OneSignal.postNotification(contents, data, child.key);
-														}
-													});
-												});
-                                            })
-                                        })
-                                        .catch((error) => {
-                                        })
+                                        resolve(url);
+                                        
                                     })
                                     .catch((error) => {
+                                        reject(error);
                                     })
-                                }},
-                                {text: 'No',  },
-                            ],
-                            { cancelable: false }
-                            )
+                                .catch((error) => {
+                                })
+                                } else if (commentType == 2) {
+                                    resolve(this.props.comment);
+                                }
+                            });
+                            commentPromise.then((url) =>{
+                                var userId = firebaseApp.auth().currentUser.uid;
+                                var d = new Date();
+                                var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
+                                firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).child('commentUsers').push({
+                                    userId: userId,
+                                    FullName: this.props.fullName,
+                                    comment: url,
+                                    commentTitle: commentType == 3 ? this.props.comment : null,
+                                    commentTime: commentTime,
+                                    recordName: recordName,
+                                })
+                                .then(() => {
+                                    ToastAndroid.show('You have commented on this Shout!', ToastAndroid.SHORT);
+                                })
+                                .catch((error) => {
+                                })
+                                var comments;
+                                firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).child('comments').once('value')
+                                .then((snapshot) => {
+                                    comments = snapshot.val();
+                                    comments ++;
+                                    firebaseApp.database().ref('/posts/').child(this.props.groupName).child(this.props.postName).update({
+                                        comments: comments,
+                                    })
+                                    .then(() => {
+                                        var date = new Date();
+                                        var lastModified = date.getUTCFullYear().toString() + '_' +
+                                        this.addZero(date.getUTCMonth()) +	 '_' +
+                                        this.addZero(date.getUTCDate()) + '_' +
+                                        this.addZero(date.getUTCHours()) + '_' +
+                                        this.addZero(date.getUTCMinutes()) + '_' +
+                                        this.addZero(date.getUTCSeconds()) + '_' +
+                                        this.addZero(date.getUTCMilliseconds());
+                                        firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
+                                            lastModified: lastModified
+                                        });
+                                        if(this.props.fullName == this.props.userName)
+                                            return;
+                                        firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
+                                            snap.forEach((child) => {
+                                                if(child.val().fullName == this.props.userName) {
+                                                    fetch('https://onesignal.com/api/v1/notifications', {  
+                                                        method: 'POST',
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            "Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+                                                        },
+                                                        body: JSON.stringify({
+                                                            app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+                                                            include_player_ids: [child.key],
+                                                            data: {
+                                                                'nfType': 'nf_comment',
+                                                                'postName':  this.props.postName, 
+                                                                'downloadUrl': this.props.downloadUrl, 
+                                                                'shoutTitle': this.props.shoutTitle, 
+                                                                'userName': this.props.userName, 
+                                                                'date': this.props.date, 
+                                                                'voiceTitle': this.props.voiceTitle, 
+                                                                'groupName': this.props.groupName,
+                                                                'groupKey': this.props.groupKey,
+                                                                'groupCreator': this.props.groupCreator,
+                                                            },
+                                                            headings:{"en": "A new comment on your shout"},
+                                                            contents: {'en': this.props.myName + ' commented'},
+                                                        })
+                                                    })
+                                                }
+                                            });
+                                        });
+                                    })
+                                })
+                                .catch((error) => {
+                                })
+                            })
+                        })
                     }, 150);
                 }}>
                 <Image source={require('../images/recordshout.png')} style={{ height: 50, width: 50}}/>
@@ -289,4 +362,11 @@ class AudioPlayer extends Component {
     }
 }
 
-export default connect()(AudioPlayer);
+function mapStateToProps(state) {
+	return {
+      fullName: state.getUserInfo.fullName,
+      playerIds: state.getUserInfo.playerIds,
+	};
+}
+
+export default connect(mapStateToProps)(AudioPlayer);
