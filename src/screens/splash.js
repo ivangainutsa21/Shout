@@ -1,14 +1,14 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	View, Text
+	View, Text,
 } from 'react-native';
 import { connect } from "react-redux";
 import { NavigationActions } from 'react-navigation'
 import Spinner from 'react-native-loading-spinner-overlay';
 
 import { firebaseApp } from '../firebase'
-import { getFullName, getGroup } from '../actions'
+import { getFullName, getGroup, } from '../actions'
 
 const resetLogin = NavigationActions.reset({
 	index: 0,
@@ -24,11 +24,10 @@ const resetHome = NavigationActions.reset({
 	]
 })
 
-
 class Splash extends Component {
 	
 	constructor(props) {
-	super(props);
+		super(props);
 		this.state = {
 			isLoading: true,
 		}
@@ -37,7 +36,6 @@ class Splash extends Component {
 	static navigationOptions = {
 		header: null
 	};
-
 	
 	componentDidMount() {
 		
@@ -51,7 +49,66 @@ class Splash extends Component {
 						isLoading: false,
 					})
 					this.props.dispatch(getFullName(snapshot.val()));
-					this.props.navigation.dispatch(resetHome);
+					
+					if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_newShout') {	
+						let resetNewPost = NavigationActions.reset({
+							index: 1,
+							actions: [
+							  NavigationActions.navigate({ routeName: 'homeGroup'}),
+							  NavigationActions.navigate({ 
+								routeName: 'home', 
+								params:{
+										groupName: this.props.nf_payload.groupName, 
+										groupKey: this.props.nf_payload.groupKey,
+										groupCreator: this.props.nf_payload.groupCreator,
+									}
+								}),
+							]
+						})
+						this.props.navigation.dispatch(resetNewPost);
+					} else if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_comment') {
+						let resetComment = NavigationActions.reset({
+							index: 2,
+							actions: [
+							  NavigationActions.navigate({ routeName: 'homeGroup'}),
+							  NavigationActions.navigate({ 
+									routeName: 'home', 
+									params:{
+										  groupName: this.props.nf_payload.groupName, 
+										  groupKey: this.props.nf_payload.groupKey,
+										  groupCreator: this.props.nf_payload.groupCreator,
+									  }
+								  }),
+							  NavigationActions.navigate({ 
+									routeName: 'comment', 
+									params:{
+										postName:  this.props.nf_payload.postName, 
+										downloadUrl: this.props.nf_payload.downloadUrl, 
+										shoutTitle: this.props.nf_payload.shoutTitle, 
+										userName: this.props.nf_payload.userName, 
+										date: this.props.nf_payload.date, 
+										voiceTitle: this.props.nf_payload.voiceTitle,
+										groupName: this.props.nf_payload.groupName, 
+										groupKey: this.props.nf_payload.groupKey,
+									}
+								}),
+							]
+						})
+						this.props.navigation.dispatch(resetComment);
+					} else if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_invitation'){
+						let resetNotification = NavigationActions.reset({
+							index: 1,
+							actions: [
+							  NavigationActions.navigate({ routeName: 'homeGroup'}),
+							  NavigationActions.navigate({ 
+									routeName: 'notifications',
+								}),
+							]
+						})
+						this.props.navigation.dispatch(resetNotification);
+					} else {
+						this.props.navigation.dispatch(resetHome);
+					}
 				})
 				.catch((error) => {                                                                                                                                                                                                                                                    
 					this.setState({
@@ -78,4 +135,9 @@ class Splash extends Component {
 	}
 } 
 
-export default connect()(Splash)
+function mapStateToProps(state) {
+	return {
+        nf_payload: state.getAppInfo.nf_payload,
+	};
+}
+export default connect(mapStateToProps)(Splash)
