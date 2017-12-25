@@ -312,7 +312,7 @@ class AudioPlayer extends Component {
                                         this.addZero(date.getUTCMinutes()) + '_' +
                                         this.addZero(date.getUTCSeconds()) + '_' +
                                         this.addZero(date.getUTCMilliseconds());
-                                        firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
+                                        firebaseApp.database().ref('groups').child(this.props.groupKey).update({
                                             lastModified: lastModified
                                         });
                                         if(this.props.fullName == this.props.userName)
