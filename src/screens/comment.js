@@ -2,12 +2,9 @@ import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
 	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, ListView, Image,
-	Platform, PermissionsAndroid, ToastAndroid, Alert, Keyboard,DeviceEventEmitter, 
+	Platform, PermissionsAndroid, ToastAndroid, Alert, Keyboard,DeviceEventEmitter, AlertAndroid, 
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
-import {
-	AudioRecorder, AudioUtils
-} from 'react-native-audio';
 import ImageView 			from 'react-native-image-view';
 import ImageResizer 		from 'react-native-image-resizer';
 import RNAudioStreamer 		from 'react-native-audio-streamer';
@@ -19,7 +16,7 @@ import srcLoginBackground 	from '../images/postbackground.png';
 import srcAddPost 			from '../images/addpost.png';
 import AudioPlayer 			from './audioPlayer';
 import { connect } 			from "react-redux";
-
+import { loggedIn, } 		from '../actions'
 
 class Comment extends Component {
 	constructor(props) {
@@ -122,6 +119,10 @@ class Comment extends Component {
                 dataSource: this.state.dataSource.cloneWithRows(workshops)
             });
 		});
+		if(this.props.isLoggedIn == true) {
+			this.props.dispatch(loggedIn(false));
+			ToastAndroid.show("                               Tip\nPress the send button to comment, or hold it to record your voice.", ToastAndroid.SHORT);
+		}
 	}
 
 	onImageClose() {
@@ -388,7 +389,7 @@ class Comment extends Component {
 						<View style={{flex: 1.2, flexDirection: 'row', alignItems: 'center', justifyContent:'center', marginVertical: 5}}>
 							<TextInput //source={usernameImg}
 								style={styles.input}
-								placeholder={this.props.recording}
+								placeholder={'Press to send... Hold to record!'/*this.props.recording*/}
 								placeholderTextColor='grey'
 								autoCapitalize={'none'}
 								returnKeyType={'done'}
@@ -409,6 +410,7 @@ class Comment extends Component {
 									groupName = { this.props.navigation.state.params.groupName } 
 									groupKey = {this.props.navigation.state.params.groupKey}
 									groupCreator = { this.props.navigation.state.params.groupCreator }
+									lastModified = { this.props.navigation.state.params.lastModified }
 									comment = {this.state.comment}
 									myName = {this.props.fullName}/>
 								/*:
@@ -501,7 +503,7 @@ const styles = StyleSheet.create({
 		paddingLeft:20,
 		fontSize: 16,
 		color: 'black',
-		width: 220,
+		width: 250,
 		height: 40,
 		borderRadius: 20,
 	},
@@ -517,6 +519,7 @@ function mapStateToProps(state) {
 	return {
 	  recording: state.getAppInfo.recording,
 	  fullName: state.getUserInfo.fullName,
+	  isLoggedIn: state.getAppInfo.isLoggedIn,
 	};
 }
 

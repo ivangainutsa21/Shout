@@ -5,6 +5,7 @@ import {
     SAVE_TITLE_RECORD,
     GET_GROUP,
     SAVE_NF,
+    ISLOGIN,
 } from '../actions'
 
 const initialState = {
@@ -14,6 +15,7 @@ const initialState = {
     titleRecordPath: '',
     group: [],
     nf_payload: undefined,
+    isLoggedIn: false,
 }
 
 export const getUserInfo = (state = initialState, action) => {
@@ -40,6 +42,8 @@ export const getAppInfo = (state = initialState, action) => {
             return {...state, titleRecordPath: action.path}
         case SAVE_NF:
             return {...state, nf_payload: action.nf_payload}
+        case ISLOGIN:
+            return {...state, isLoggedIn: action.loggedIn}
         default:
             return state;
     }

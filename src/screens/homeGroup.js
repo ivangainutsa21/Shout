@@ -76,7 +76,6 @@ class HomeGroup extends Component {
                 groups.push({
                     groupName: 'lastOneGroup',
                 })
-                console.log(groups);
                 this.setState({
                     dataSource: this.state.dataSource.cloneWithRows(groups)
                 });

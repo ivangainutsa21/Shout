@@ -65,38 +65,7 @@ class Post extends Component {
 		}
 		return i;
 	}
-	uploadVoiceTitle = (uploadName) => {
-		const recordName = uploadName + '.aac';
-		const image = this.props.titleRecordPath;
-		const Blob = RNFetchBlob.polyfill.Blob
-		const fs = RNFetchBlob.fs
-		window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
-		window.Blob = Blob
-	
-		let uploadBlob = null
-		const imageRef = firebaseApp.storage().ref('records').child(recordName)
-		let mime = 'audio/aac'
-		fs.readFile(image, 'base64')
-			.then((data) => {
-			return Blob.build(data, { type: `${mime};BASE64` })
-		})
-		.then((blob) => {
-			uploadBlob = blob
-			return imageRef.put(blob, { contentType: mime })
-			})
-		.then((snapshot) => {
-			uploadBlob.close()
-			return imageRef.getDownloadURL();
-		})
-		.then((url) => {
-			firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).update({
-				voiceTitle: url,
-			})
-		})
-		.catch((error) => {
-		})
-	}
-	
+
 	postShout () {
 		var date = new Date();
 		var uploadName = 'post' + 
@@ -135,6 +104,15 @@ class Post extends Component {
 		.then((url) => {
 			var email = firebaseApp.auth().currentUser.email;
 			var userId = firebaseApp.auth().currentUser.uid;
+			var date = new Date();
+			var lastModified = date.getUTCFullYear().toString() + '_' +
+			this.addZero(date.getUTCMonth()) +	 '_' +
+			this.addZero(date.getUTCDate()) + '_' +
+			this.addZero(date.getUTCHours()) + '_' +
+			this.addZero(date.getUTCMinutes()) + '_' +
+			this.addZero(date.getUTCSeconds()) + '_' +
+			this.addZero(date.getUTCMilliseconds());
+
 			firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).set({
 				filename: uploadName + '.jpg',
 				downloadUrl: url,
@@ -146,6 +124,7 @@ class Post extends Component {
 				playerIds: this.props.playerIds,
 				userId: userId,
 				email: email,
+				lastModified: lastModified,
 			})
 			.then(() => {
 				if(Platform.OS === 'android')
@@ -154,24 +133,52 @@ class Post extends Component {
 					isUploading: false,
 				})
 			})
-
 			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
 				thumbLink : url,
 			})
-			var date = new Date();
-			var lastModified = date.getUTCFullYear().toString() + '_' +
-			this.addZero(date.getUTCMonth()) +	 '_' +
-			this.addZero(date.getUTCDate()) + '_' +
-			this.addZero(date.getUTCHours()) + '_' +
-			this.addZero(date.getUTCMinutes()) + '_' +
-			this.addZero(date.getUTCSeconds()) + '_' +
-			this.addZero(date.getUTCMilliseconds());
 			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
 				lastModified: lastModified
 			})
 			
-			this.uploadVoiceTitle(uploadName);
+			var voiceTitle = undefined;
+
+			new Promise((resolve, reject) => {
+				const recordName = uploadName + '.aac';
+				const image = this.props.titleRecordPath;
+				const Blob = RNFetchBlob.polyfill.Blob
+				const fs = RNFetchBlob.fs
+				window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
+				window.Blob = Blob
 			
+				let uploadBlob = null
+				const imageRef = firebaseApp.storage().ref('records').child(recordName)
+				let mime = 'audio/aac'
+				fs.readFile(image, 'base64')
+					.then((data) => {
+					return Blob.build(data, { type: `${mime};BASE64` })
+				})
+				.then((blob) => {
+					uploadBlob = blob
+					return imageRef.put(blob, { contentType: mime })
+					})
+				.then((snapshot) => {
+					uploadBlob.close()
+					return imageRef.getDownloadURL();
+				})
+				.then((url) => {
+					firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(uploadName).update({
+						voiceTitle: url,
+					})
+					resolve(url);
+				})
+				.catch((error) => {
+					reject(error);
+				})
+			}).
+			then((url) => {
+				voiceTitle = url;
+			})
+
 			var allowedUsers = [];
 			var promises = [];
 			firebaseApp.database().ref().child('groups').child(this.props.navigation.state.params.groupKey).child('privacy').on('value', (snap) => {
@@ -183,7 +190,7 @@ class Post extends Component {
 						})
 					}));
 				})
-
+				
 				Promise.all(promises).then(() => {
 					if(allowedUsers.length == 0) {
 						fetch('https://onesignal.com/api/v1/notifications', {  
@@ -196,9 +203,16 @@ class Post extends Component {
 								app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
 								included_segments: ["All"],
 								data: {
-									'nfType': 'nf_newShout',
+									'nfType': 'nf_gotoPost',
 									"groupKey": this.props.navigation.state.params.groupKey, 
-									"groupName": this.props.navigation.state.params.groupName
+									"groupName": this.props.navigation.state.params.groupName,
+									"groupCreator": this.props.navigation.state.params.groupCreator,
+									'postName':  uploadName,
+									'downloadUrl': url, 
+									'shoutTitle': this.state.shoutTitle, 
+									'userName': this.state.userName, 
+									'date': postDate, 
+									'voiceTitle': voiceTitle, 
 								},
 								headings:{"en": "New Post"},
 								contents: {"en": this.state.userName + ' just shouted!'},
@@ -216,21 +230,25 @@ class Post extends Component {
 								app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
 								include_player_ids: allowedUsers,
 								data: {
-									'nfType': 'nf_newShout',
+									'nfType': 'nf_gotoPost',
 									"groupKey": this.props.navigation.state.params.groupKey, 
 									"groupName": this.props.navigation.state.params.groupName,
 									"groupCreator": this.props.navigation.state.params.groupCreator,
+									'postName':  uploadName + '.jpg', 
+									'downloadUrl': url, 
+									'shoutTitle': this.state.shoutTitle, 
+									'userName': this.state.userName, 
+									'date': postDate, 
+									'voiceTitle': voiceTitle, 
 								},
 								headings:{"en": "New Post"},
 								contents: {"en": this.state.userName + ' just shouted!'},
 							})
 						})
 					}
+					this.props.navigation.goBack();
 				}) 
 			})
-			
-			
-			this.props.navigation.goBack();
 		})
 		.catch((error) => {
 		})

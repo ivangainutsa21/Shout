@@ -4,6 +4,8 @@ export const REGISTER_PLAYERIDS = 'REGISTER_PLAYERIDS'
 export const SAVE_TITLE_RECORD = 'SAVE_TITLE_RECORD'
 export const GET_GROUP = 'GET_GROUP'
 export const SAVE_NF = 'SAVE_NF'
+export const ISLOGGEDIN = 'ISLOGGEDIN'
+export const ISLOGIN = 'ISLOGIN'
 
 export function getFullName(fullName){
     return { type: GET_FULLNAME, fullName};
@@ -27,4 +29,7 @@ export function getGroup(group){
 
 export function save_nf(nf_payload){
     return { type: SAVE_NF, nf_payload};
+}
+export function loggedIn(loggedIn){
+    return { type: ISLOGIN, loggedIn};
 }

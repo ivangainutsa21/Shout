@@ -7,8 +7,11 @@ import { NavigationActions } from 'react-navigation';
 
 import { firebaseApp } 		from '../firebase'
 import srcLoginBackground 	from '../images/LoginBackground.png';
+import { connect } from "react-redux";
 
-export default class Login extends Component {
+import { loggedIn, } from '../actions'
+
+class Login extends Component {
 	constructor(props) {
 		super(props);
 		this.state = {
@@ -66,6 +69,8 @@ export default class Login extends Component {
 								else {
 									firebaseApp.auth().signInWithEmailAndPassword(this.state.email, this.state.password)
 									.then((user) => {
+
+										this.props.dispatch(loggedIn(true));
 										Keyboard.dismiss();
 										this.props.navigation.dispatch(backAction);
 									})
@@ -148,3 +153,5 @@ const styles = StyleSheet.create({
 		fontWeight: 'bold'
 	},
 });
+
+export default connect()(Login);

@@ -50,7 +50,7 @@ class Splash extends Component {
 					})
 					this.props.dispatch(getFullName(snapshot.val()));
 					
-					if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_newShout') {	
+					/*if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_newShout') {	
 						let resetNewPost = NavigationActions.reset({
 							index: 1,
 							actions: [
@@ -66,8 +66,8 @@ class Splash extends Component {
 							]
 						})
 						this.props.navigation.dispatch(resetNewPost);
-					} else if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_comment') {
-						let resetComment = NavigationActions.reset({
+					} else */if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_gotoPost') {
+						let resetPost = NavigationActions.reset({
 							index: 2,
 							actions: [
 							  NavigationActions.navigate({ routeName: 'homeGroup'}),
@@ -90,11 +90,12 @@ class Splash extends Component {
 										voiceTitle: this.props.nf_payload.voiceTitle,
 										groupName: this.props.nf_payload.groupName, 
 										groupKey: this.props.nf_payload.groupKey,
+										groupCreator: this.props.nf_payload.groupCreator,
 									}
 								}),
 							]
 						})
-						this.props.navigation.dispatch(resetComment);
+						this.props.navigation.dispatch(resetPost);
 					} else if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_invitation'){
 						let resetNotification = NavigationActions.reset({
 							index: 1,

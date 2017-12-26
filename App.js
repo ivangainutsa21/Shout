@@ -38,6 +38,7 @@ class App extends Component<{}> {
 			this.props.dispatch(save_nf(openResult.notification.payload.additionalData));
 			if(firebaseApp.auth().currentUser == null)
 				return;
+				/*
 			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_newShout') {	
 				let resetNewPost = NavigationActions.reset({
 					index: 1,
@@ -55,9 +56,11 @@ class App extends Component<{}> {
 				})
 				this.navigator && this.navigator.dispatch(resetNewPost);
 			} 
-			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_comment') {
+			*/
+			console.log(openResult.notification.payload.additionalData);
+			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_gotoPost') {
 				console.log(openResult.notification.payload.additionalData.groupCreator);
-				let resetComment = NavigationActions.reset({
+				let resetPost = NavigationActions.reset({
 					index: 2,
 					actions: [
 					NavigationActions.navigate({ routeName: 'homeGroup'}),
@@ -85,7 +88,7 @@ class App extends Component<{}> {
 						}),
 					]
 				})
-				this.navigator && this.navigator.dispatch(resetComment);
+				this.navigator && this.navigator.dispatch(resetPost);
 			}
 			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_invitation'){
 				let resetNotification = NavigationActions.reset({

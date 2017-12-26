@@ -48,10 +48,20 @@ export default class Home extends Component {
 					date: child.val().date,
 					voiceTitle: child.val().voiceTitle,
 					groupCreator: child.val().groupCreator,
+					lastModified: child.val().lastModified,
 					postName: child.key,
                 });
 			});
-			workshops.reverse();
+			
+			workshops.sort(function(a, b){
+				if(a.lastModified != undefined && b.lastModified == undefined) return -1;
+				if(a.lastModified == undefined && b.lastModified != undefined) return 1;
+				if(a.lastModified == undefined && b.lastModified == undefined) return 0;
+				if(a.lastModified < b.lastModified) return 1;
+				if(a.lastModified > b.lastModified) return -1;
+				return 0;
+			});
+
             this.setState({
                 dataSource: this.state.dataSource.cloneWithRows(workshops)
 			});
@@ -72,7 +82,8 @@ export default class Home extends Component {
 								shoutTitle: item.shoutTitle, 
 								userName: item.userName, 
 								date: item.date, 
-								voiceTitle: item.voiceTitle, 
+								voiceTitle: item.voiceTitle,
+								lastModified: item.lastModified,
 								groupName: this.props.navigation.state.params.groupName,
 								groupKey: this.props.navigation.state.params.groupKey,
 							});
