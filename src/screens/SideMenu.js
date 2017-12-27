@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
-	StyleSheet, View,TouchableOpacity, Text, ImageBackground,
+	StyleSheet, View,TouchableOpacity, Text, ImageBackground, Image
 } from 'react-native';
 
 import { NavigationActions } from 'react-navigation'
@@ -16,6 +16,7 @@ export default class SideMenu extends Component {
 		this.state = {
 			fullName: '',
 			email: '',
+			avatar: ''
 		};
 	}
 
@@ -32,8 +33,16 @@ export default class SideMenu extends Component {
 		.catch((error) => {
 		})
 		*/
-		
+		var user = firebaseApp.auth().currentUser;
+		firebaseApp.database().ref('/users/').child(user.uid).child('FullName').once('value').then((snapshot) => {
+			this.setState({
+				fullName: snapshot.val(),
+			})
+		}).catch((error) => {
+		})
+
 		this.setState({
+			avatar: user.photoURL,
 			email: firebaseApp.auth().currentUser.email,
 			fullName: store.getState().getUserInfo.fullName,
 		})
@@ -41,10 +50,15 @@ export default class SideMenu extends Component {
 	render() {
         const { navigate } = this.props.navigation;
 		return (
-			<ImageBackground style={styles.container} source={srcLoginBackground}>
-				<View style={{flex: 3, justifyContent: 'flex-end', alignItems: 'center', borderBottomColor: 'lightgrey', borderBottomWidth: 1}}>
-                    <Text style={{backgroundColor: 'transparent', marginBottom: 15}}>{this.state.fullName}</Text>
-                    <Text style={{backgroundColor: 'transparent', marginBottom: 20}}>{this.state.email}</Text>
+			<View style={styles.container}>
+				<View style={{flex: 3, alignItems: 'center', justifyContent:'center', borderBottomColor: 'lightgrey', borderBottomWidth: 1}}>
+					{
+						this.state.avatar ?
+							<Image source={{uri: this.state.avatar}} style={{height: 150, width: 150, borderRadius: 75, marginTop: 30}}/>
+							:
+							<View style={{height: 150, width: 150, borderRadius: 75, backgroundColor:'black', marginTop: 30}}/>
+					}
+                    <Text style={{backgroundColor: 'transparent', marginTop: 20}}>Hello, {this.state.fullName}</Text>
                 </View>
                 <View style={{flex: 1, justifyContent:'space-between', alignItems: 'center', paddingTop: 30}}>
                     <TouchableOpacity 
@@ -85,7 +99,7 @@ export default class SideMenu extends Component {
                 <View style={{flex: 2, justifyContent: 'center', alignItems: 'center'}}>
                     <Text>Powered By Talents Essence</Text>
                 </View>
-			</ImageBackground>
+			</View>
 		);
 	}
 }

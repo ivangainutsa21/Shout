@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import {
     StyleSheet, View,TouchableOpacity, Text, TextInput, Image, KeyboardAvoidingView, 
-    ToastAndroid, AlertAndroid, ListView, Alert,
+    ToastAndroid, AlertAndroid, ListView, Alert, Keyboard
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import RadioForm, {RadioButton, RadioButtonInput, RadioButtonLabel} from 'react-native-simple-radio-button';
@@ -26,6 +26,8 @@ class NewGroup extends Component {
             isUploading: false,
             allEmails: [],
             invitatedUsers: [],
+            isKeyboard: false,
+            groupUsers: [],
         }
         this.onChangeSearch = this.onChangeSearch.bind(this);
         this.renderRow = this.renderRow.bind(this);
@@ -36,12 +38,23 @@ class NewGroup extends Component {
 		header: null
 	};
 
+    componentWillMount () {
+        this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this.keyboardDidShow);
+        this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this.keyboardDidHide);
+      }
+      componentWillUnmount () {
+        this.keyboardDidShowListener.remove();
+        this.keyboardDidHideListener.remove();
+      }
+      keyboardDidShow  = ()=> {
+        this.setState({isKeyboard: true})
+      }
+    
+    keyboardDidHide = () => {
+        this.setState({isKeyboard: false})
+    }
 	componentDidMount() {
-        
         var allEmails = [];
-        this.setState({
-            dataSource: this.state.dataSource.cloneWithRows(allEmails)
-        });
         firebaseApp.database().ref('users/').on('value', (snap) => {
             snap.forEach((child) => {
                 allEmails.push({
@@ -51,10 +64,15 @@ class NewGroup extends Component {
                     invitatedUsers: [],
                 })
             })
-            this.setState({
-                allEmails: allEmails,
-            })
         })
+
+        this.setState({
+            allEmails: allEmails,
+        })
+
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(allEmails)
+        });
 	}
 
 	addZero = (i) =>{
@@ -132,6 +150,7 @@ class NewGroup extends Component {
 
         } else {
             var date = new Date();
+            var promises = [];
             var groupName = 'group' + 
                 date.getUTCFullYear().toString() + '_' +
                 this.addZero(date.getUTCMonth()) +	 '_' +
@@ -142,41 +161,6 @@ class NewGroup extends Component {
                 this.addZero(date.getUTCMilliseconds());
 
             var userId = firebaseApp.auth().currentUser.uid;
-            if(this.state.value == 'private') {
-                firebaseApp.database().ref().child('groups').child(groupName).child('privacy').push({
-                    userId
-                });
-                this.state.invitatedUsers.forEach((invitatedUser) => {
-                    new Promise((resolve, reject) => {
-                        firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(groupName).update({
-                            groupName: this.state.groupName,
-                            playerIds: this.props.playerIds,
-                            userName: this.props.fullName,
-                        })
-                    })
-                    .then(() => {
-                        firebaseApp.database().ref().child('users').child(invitatedUser).child('playerIds').on(('value'), (snap) => {
-                            fetch('https://onesignal.com/api/v1/notifications', {  
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    "Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
-                                },
-                                body: JSON.stringify({
-                                    app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
-                                    include_player_ids: [snap.val()],
-                                    data: {
-                                        'nfType': 'nf_invitation',
-                                    },
-                                    headings:{"en": "A new comment on your shout"},
-                                    contents: {'en': this.props.fullName + ' want to invite you to ' + this.state.groupName},
-                                })
-                            })
-                        })
-                        
-                    })
-                })
-            }
 
             var date = new Date();
             var lastModified = date.getUTCFullYear().toString() + '_' +
@@ -186,25 +170,58 @@ class NewGroup extends Component {
             this.addZero(date.getUTCMinutes()) + '_' +
             this.addZero(date.getUTCSeconds()) + '_' +
             this.addZero(date.getUTCMilliseconds());
-            firebaseApp.database().ref().child('groups').child(groupName).update({
-                groupName: this.state.groupName,
-                groupCreator: userId,
-                lastModified: lastModified
-            })
-            .then(() => {
 
-                this.setState({
-                    isUploading: false,
+                firebaseApp.database().ref().child('groups').child(groupName).update({
+                    groupName: this.state.groupName,
+                    groupCreator: userId,
+                    lastModified: lastModified
                 })
-                ToastAndroid.show(this.state.groupName + ' group has been successfully created', ToastAndroid.SHORT);
-                this.props.navigation.goBack();
-            })
-            .catch(() => {
-                ToastAndroid.show('Failed', ToastAndroid.SHORT);
-                this.setState({
-                    isUploading: false,
+                .then(() => {
+                    this.setState({
+                        isUploading: false,
+                    })
+                    this.props.navigation.goBack();
                 })
-            })
+                .catch(() => {
+                })
+            
+            if(this.state.value == 'private') {
+                firebaseApp.database().ref().child('groups').child(groupName).child('privacy').push({
+                    userId
+                });
+                this.state.invitatedUsers.forEach((invitatedUser) => {
+                        firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(groupName).update({
+                            groupName: this.state.groupName,
+                            playerIds: this.props.playerIds,
+                            userName: this.props.fullName,
+                        })
+                        .then(() => {
+                            firebaseApp.database().ref().child('users').child(invitatedUser).child('playerIds').on(('value'), (snap) => {
+                                fetch('https://onesignal.com/api/v1/notifications', {  
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        "Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+                                    },
+                                    body: JSON.stringify({
+                                        app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+                                        include_player_ids: [snap.val()],
+                                        data: {
+                                            'nfType': 'nf_invitation',
+                                        },
+                                        headings:{"en": "A new comment on your shout"},
+                                        contents: {'en': this.props.fullName + ' want to invite you to ' + this.state.groupName},
+                                    })
+                                })
+                            })
+            
+                        })
+                        .catch(() => {
+                        })
+                })
+            }
+
+            
         }
     }
     onChangeSearch(text) {
@@ -212,7 +229,7 @@ class NewGroup extends Component {
         //var allEmails = this.state.allEmails;
         this.state.allEmails.forEach((field) => {
             var email = field.email;
-            if(email.indexOf(text) > -1)
+            if(email != undefined && email.indexOf(text) > -1)
             {
                 searchResult.push(field);
             }
@@ -246,7 +263,7 @@ class NewGroup extends Component {
 
                 }}>
                 {/*<Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>*/}
-                <Text style={{fontSize: 14}}>{item.name + ' | ' + item.email}</Text>
+                <Text style={{fontSize: 14}}>{item.name }</Text>
                 </TouchableOpacity>
         </View>
         );
@@ -339,9 +356,8 @@ class NewGroup extends Component {
                             </RadioForm>
                         </View>
                     </View>
-                <View style={{flex: 1, marginTop: 20}}>
-
-                    <View style={{display: this.state.value == 'public' ? 'none' : null, flex: 1}}>
+                <View style={{flex: 1, marginTop: 20, marginBottom: 20}}>
+                    <View style={{flex: 1, display: this.state.value == 'public' ? 'none' : null, }}>
                         <Text style = {styles.text}>Adding Users</Text>
                         <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 20, marginTop: 20}}>Invite Users</Text>
                         <View style={{flexDirection: 'row', marginTop: 20, marginHorizontal: 20, alignItems: 'center'}}>
@@ -367,15 +383,16 @@ class NewGroup extends Component {
                             />
                         </View>
                     </View>
-                    <TouchableOpacity
-                        style={{flexDirection: 'row', alignItems: 'center', alignSelf: 'center', height: 60}}
+                </View>
+                <TouchableOpacity
+                        style={{flexDirection: 'row', alignItems: 'center', alignSelf: 'center', height:60, display: this.state.isKeyboard == true ? 'none' : null}}
                         onPress = {() => {
                             if(this.state.groupName == undefined)
                                 return;
                             this.setState({
                                 isUploading: true,
                             })
-                            if(this.state.value == 'public') {
+                            //if(this.state.value == 'public') {
                                 firebaseApp.database().ref().child('groups').once('value', (snap, b) => {
                                     
                                     var isAlready = false;
@@ -394,15 +411,14 @@ class NewGroup extends Component {
                                     if(isAlready == false)
                                         this.createNewGroup();
                                 })
-                            } else {
-                                this.createNewGroup();
-                            }
+                            //} else {
+                            //    this.createNewGroup();
+                            //}
 
                         }}>
                         <Image source={this.props.navigation.state.params.isEdit == true ? require('../images/update.png') : require('../images/newGroup.png')} style={{width: 24, height: 24, }}/>
                         <Text style = {{fontSize: 22, backgroundColor: 'transparent', color: 'black', marginLeft: 10}}>{this.props.navigation.state.params.isEdit == true ? 'Update Group' : 'Create Group'}</Text>
                     </TouchableOpacity>
-                </View>
 			</View>
 		);
 	}

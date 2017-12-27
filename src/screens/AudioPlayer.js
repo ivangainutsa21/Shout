@@ -29,6 +29,7 @@ class AudioPlayer extends Component {
       audioPath: AudioUtils.DocumentDirectoryPath + '/shoutRecord.aac',
       hasPermission: undefined,
       isPressed: true,
+      comment: '',
     };
 
     prepareRecordingPath(audioPath){
@@ -157,8 +158,7 @@ class AudioPlayer extends Component {
     render() {
         return (
             <TouchableOpacity
-                style = {{
-                }}
+                style = {{backgroundColor:'royalblue',width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems:'center'}}
                 onPressIn = {() => {
                     this._record()
                     this.props.dispatch(getRecordingStatus(true));
@@ -167,6 +167,9 @@ class AudioPlayer extends Component {
                     this.setState({
                         isPressed: true,
                     });
+                    this.setState({
+                        comment: this.props.comment,
+                    })
                     setTimeout(() => {
                         this.setState({
                             isPressed: false,
@@ -181,13 +184,14 @@ class AudioPlayer extends Component {
                     } else {
                         commentType = 2;
                     }
-                    
+
+                    this.props.onUpload();
                     setTimeout(() => {
+                        this.props.onComment();
                         this.props.dispatch(getRecordingStatus(false));
                         this._stop();
-                        if(this.props.comment == '')
+                        if(this.state.comment == '' && commentType == 1)
                         {
-                            alert('Please write a comment');
                             return;
                         }
                         var commentPromise;
@@ -227,13 +231,12 @@ class AudioPlayer extends Component {
                                 })
                                 .then((url) => {
                                     resolve(url);
-                                    
                                 })
                                 .catch((error) => {
                                     reject(error);
                                 })
                             } else {
-                                resolve(this.props.comment);
+                                resolve(this.state.comment);
                             }
                         });
                         commentPromise.then((url) =>{
@@ -244,7 +247,7 @@ class AudioPlayer extends Component {
                                 userId: userId,
                                 FullName: this.props.fullName,
                                 comment: url,
-                                commentTitle: commentType == 2 ? this.props.comment : null,
+                                commentTitle: (commentType == 2 && this.state.comment != '') ? this.state.comment : null,
                                 commentTime: commentTime,
                                 recordName: recordName,
                             })
@@ -302,8 +305,8 @@ class AudioPlayer extends Component {
                                                             'groupKey': this.props.groupKey,
                                                             'groupCreator': this.props.groupCreator,
                                                         },
-                                                        headings:{"en": "A new comment on your shout"},
-                                                        contents: {'en': this.props.myName + ' commented'},
+                                                        headings:{"en": "Comment"},
+                                                        contents: {'en':  this.state.comment != '' ? this.props.myName + ': ' + this.state.comment : this.props.myName + ': ' + 'said something'},
                                                     })
                                                 })
                                             }
@@ -317,7 +320,7 @@ class AudioPlayer extends Component {
                     }, 150);
                 }}
                 >
-                <Image source={require('../images/recordshout.png')} style={{ height: 50, width: 50}}/>
+                <Image source={require('../images/recordshout.png')} style={{ height: 35, width: 35,}}/>
               </TouchableOpacity>
         );
     }

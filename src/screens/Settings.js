@@ -8,7 +8,6 @@ import RNFetchBlob 				from 'react-native-fetch-blob'
 
 import { firebaseApp } 		from '../firebase'
 import srcLoginBackground 	from '../images/postbackground.png';
-import srcAddPost 			from '../images/addpost.png';
 
 export default class Settings extends Component {
 	static navigationOptions = {

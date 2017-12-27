@@ -28,9 +28,12 @@ class Notifications extends Component {
 	};
 
 	componentDidMount() {
+        var pendingRequests = [];
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
+        });
         var userId = firebaseApp.auth().currentUser.uid;
 		firebaseApp.database().ref('users').child(userId).child('pendingRequests').on('value', (snap) => {
-            var pendingRequests = [];
             snap.forEach((notification) => {
                 pendingRequests.push({
                     groupKey: notification.key,
@@ -41,6 +44,7 @@ class Notifications extends Component {
             })
 
             this.setState({
+                pendingRequests: pendingRequests,
                 dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
             });
         })
@@ -90,8 +94,7 @@ class Notifications extends Component {
 					</TouchableOpacity>
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>Group Requests</Text>
 				</View>
-                    
-                    
+                <Text style={{fontSize: 18, alignSelf: 'center', marginTop: 30, display: this.state.pendingRequests.length > 0 ? 'none' : null}}>You have no group requests</Text>
                 <View style={{flex: 1, marginTop: 20}}>
                     <ListView
                         dataSource={this.state.dataSource}

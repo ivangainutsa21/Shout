@@ -16,7 +16,6 @@ import ImageResizer 	from 'react-native-image-resizer';
 
 import { firebaseApp } 		from '../firebase';
 import srcLoginBackground 	from '../images/postbackground.png';
-import srcAddPost 			from '../images/addpost.png';
 import store 				from '../store';
 import TitlePlayer			from './titlePlayer';
 
@@ -31,7 +30,7 @@ class Post extends Component {
 			userName: '',
 			isUploading: false,
 			isPlaying: false,
-
+			originImage: '',
 			thumbnail: null,
 			width: null,
 			height: null,
@@ -234,7 +233,7 @@ class Post extends Component {
 									"groupKey": this.props.navigation.state.params.groupKey, 
 									"groupName": this.props.navigation.state.params.groupName,
 									"groupCreator": this.props.navigation.state.params.groupCreator,
-									'postName':  uploadName + '.jpg', 
+									'postName':  uploadName,
 									'downloadUrl': url, 
 									'shoutTitle': this.state.shoutTitle, 
 									'userName': this.state.userName, 
@@ -299,16 +298,25 @@ class Post extends Component {
 									console.log('User tapped custom button: ', response.customButton);
 								}
 								else {
-									ImageResizer.createResizedImage(response.uri, 1024, 1024, 'JPEG', 100)
-									.then(({uri}) => {
-									  	this.setState({
-											thumbnail: uri
-										})
-									}).catch((err) => {
-										this.setState({
-										  	thumbnail: null,
-									  })
-									});
+									Image.getSize(response.uri, (width, height) => {
+										let rotation = 0;
+										if(height > width){
+											rotation = 90;
+										}
+										ImageResizer.createResizedImage(response.uri, 1024, 1024, 'JPEG', 100, rotation)
+										.then(({uri}) => {
+												this.setState({
+												thumbnail: uri
+											})
+										}).catch((err) => {
+											this.setState({
+													thumbnail: null,
+											})
+										});
+									})
+									this.setState({
+										originImage: response.uri,
+									})
 								}
 							});	
 						}}>
@@ -316,7 +324,7 @@ class Post extends Component {
 						this.state.thumbnail == null ?
 							<Image source={require('../images/addimage.png')} style={{height: 60, width: 60}}/>
 							:
-							<Image source={{uri: this.state.thumbnail}} style={{flex: 1,borderWidth: 3, borderColor: 'black'}}/>
+							<Image source={{uri: this.state.originImage}} style={{flex: 1,borderWidth: 3, borderColor: 'black'}}/>
 						}
 					</TouchableOpacity>
 					<View style={{backgroundColor: 'whitesmoke', flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent:'center', }}>

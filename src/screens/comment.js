@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import Dimensions from 'Dimensions';
 import {
 	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, ListView, Image,
-	Platform, PermissionsAndroid, ToastAndroid, Alert, Keyboard,DeviceEventEmitter, AlertAndroid, 
+	Platform, PermissionsAndroid, ToastAndroid, Alert, Keyboard,DeviceEventEmitter, AlertAndroid, Linking
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import ImageView 			from 'react-native-image-view';
@@ -13,10 +13,11 @@ import OneSignal 			from 'react-native-onesignal';
 import RNFetchBlob 			from 'react-native-fetch-blob'
 import { firebaseApp } 		from '../firebase';
 import srcLoginBackground 	from '../images/postbackground.png';
-import srcAddPost 			from '../images/addpost.png';
 import AudioPlayer 			from './audioPlayer';
 import { connect } 			from "react-redux";
 import { loggedIn, } 		from '../actions'
+import Spinner 				from 'react-native-loading-spinner-overlay';
+import Hyperlink from 'react-native-hyperlink'
 
 class Comment extends Component {
 	constructor(props) {
@@ -37,16 +38,27 @@ class Comment extends Component {
 			isMyPost: false,
 			isAllPlaying: false,
 			allRecords: [],
+			isLike: false,
 			currentRecord: 0,
+			height: 40,
+			isUploading: false,
 		}
 		this.renderRow = this.renderRow.bind(this);
 		this.onImageClose = this.onImageClose.bind(this);
+		this.onUpload = this.onUpload.bind(this);
+		this.onComment = this.onComment.bind(this);
 		this.subscription = DeviceEventEmitter.addListener('RNAudioStreamerStatusChanged',this._statusChanged.bind(this));
 	}
 
 	static navigationOptions = {
 		header: null
 	};
+
+	updateSize = (height) => {
+		this.setState({
+		  height
+		});
+	  }
 
 	_statusChanged(status) {
 		if(status == 'FINISHED') {
@@ -130,10 +142,22 @@ class Comment extends Component {
 			isVisible: false,
 		})
 	}
+	onComment() {
+		this.setState({
+			comment: '',
+			isUploading: false,
+		})
+	}
+	onUpload() {
+		this.setState({
+			comment: '',
+			isUploading: true,
+		})
+	}
 	renderRow(item, sectionId, rowId){
         return(
-			<View style={{backgroundColor: 'whitesmoke', marginLeft: 10, marginBottom: 10}}>
-				<View style={{flexDirection: 'row', alignItems: 'center'}}>
+			<View style={{backgroundColor: 'whitesmoke', marginLeft: 10, marginBottom: 10, paddingVertical: 5}}>
+				<View style={{flexDirection: 'row', alignItems: 'center', }}>
 					<Text style={{fontSize: 14, color: 'black'}}>{item.FullName}</Text>
 					<Text style={{fontSize: 10, color: 'grey', marginLeft: 10}}>{item.commentTime}</Text>
 				</View>
@@ -176,7 +200,10 @@ class Comment extends Component {
 							</View>
 						</View>
 					:
-						<Text style={{fontSize: 12, color: 'black', marginLeft: 10}}>"{item.comment}"</Text>
+						<Hyperlink linkStyle={ { color: '#2980b9', fontSize: 16 } } onPress={ url => Linking.openURL(url) }>
+							<Text style={{fontSize: 12, color: 'black', marginLeft: 10}}>{item.comment}</Text>
+  						</Hyperlink>
+
 				}
 			</View>
 			
@@ -188,14 +215,37 @@ class Comment extends Component {
 		}
 		return i;
 	}
+	onLike = () =>{
+		var userId = firebaseApp.auth().currentUser.uid;
+		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likeUsers').push({
+			userId,
+		})
+		var likes;
+		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likes').once('value')
+		.then((snapshot) => {
+			likes = snapshot.val();
+			likes ++;
+			firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).update({
+				likes: likes,
+			})
+			ToastAndroid.show('You have liked this Shout!', ToastAndroid.SHORT);
+		})
+		.catch((error) => {
+		})
+	}
 	render() {
         const { navigate } = this.props.navigation;
         const { state } = this.props.navigation;
         const backAction = NavigationActions.back({
 			key: null
 		})
+		const { height} = this.state;
+		let newStyle = {
+			height
+		  }
 		return (
-			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
+			<View style={styles.container}>
+				<Spinner visible={this.state.isUploading} textContent={"Uploading..."} textStyle={{color: '#FFF'}} />
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity
 						onPress = {() => {
@@ -207,7 +257,7 @@ class Comment extends Component {
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>Shout!</Text>
 				</View>
 				<View style = {{flex: 2,}}>
-					<View style = {{flex: 4, }}>
+					<View style = {{flex: 3, }}>
 						<View style={{backgroundColor: 'whitesmoke',flex: 0.8, paddingHorizontal: 20, flexDirection: 'row', justifyContent: 'space-between'}}>
 							<View>
 								<Text numberOfLines={1} style={{fontSize: 18}}>{state.params.shoutTitle}</Text>
@@ -215,24 +265,7 @@ class Comment extends Component {
 							</View>
 							<View style = {{flexDirection: 'row', alignItems: 'center', }}>
 								<TouchableOpacity style={{}} disabled = {!this.state.likeAvaialbe}
-									onPress = {() => {
-										var userId = firebaseApp.auth().currentUser.uid;
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likeUsers').push({
-											userId,
-										})
-										var likes;
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likes').once('value')
-										.then((snapshot) => {
-											likes = snapshot.val();
-											likes ++;
-											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).update({
-												likes: likes,
-											})
-											ToastAndroid.show('You have liked this Shout!', ToastAndroid.SHORT);
-										})
-										.catch((error) => {
-										})
-									}}>
+									onPress = {this.onLike}>
 									{
 									this.state.likeAvaialbe ?
 										<ImageBackground source={require('../images/heart.png')} style={{height: 30, width: 30}}/>
@@ -300,7 +333,7 @@ class Comment extends Component {
 										this.setState({showMenu: !this.state.showMenu})
 										
 									}}>
-									<ImageBackground source={require('../images/comment_menu.png')} style={{height: 24, width: 24, }}/>
+									<ImageBackground source={require('../images/more.png')} style={{height: 24, width: 24, }}/>
 								</TouchableOpacity>
 							</View>
 						</View>
@@ -358,20 +391,34 @@ class Comment extends Component {
 							<TouchableOpacity
 								activeOpacity={1}
 								style={{flex: 1, zIndex: 0}}
-								onPress = {() => {
-									Image.getSize(state.params.downloadUrl, (width, height) => {
+								onPressIn = {() => {
+									this.setState({
+										isLike: true,
+									})
+									setTimeout(() => {
 										this.setState({
-											isVisible: true,
-											imageWidth: 250,
-											imageHeight: 250 * height / width,
-										})
-									  }, (error) => {
-										this.setState({
-											isVisible: true,
-											imageWidth: 250,
-											imageHeight: 250
-										})
-									  });
+											isLike: false,
+										}) 
+									}, 500);
+								}}
+								onPressOut = {() => {
+									if(this.state.isLike) {
+										Image.getSize(state.params.downloadUrl, (width, height) => {
+											this.setState({
+												isVisible: true,
+												imageWidth: 250,
+												imageHeight: 250 * height / width,
+											})
+										}, (error) => {
+											this.setState({
+												isVisible: true,
+												imageWidth: 250,
+												imageHeight: 250
+											})
+										});
+									} else {
+										this.onLike();
+									}
 								}}>
 								<ImageBackground source={{uri: state.params.downloadUrl}} style={{flex: 1}}/>
 							</TouchableOpacity>
@@ -386,96 +433,36 @@ class Comment extends Component {
 								enableEmptySections={true}
 							/>
 						</View>	
-						<View style={{flex: 1.2, flexDirection: 'row', alignItems: 'center', justifyContent:'center', marginVertical: 5}}>
+						<View style={{flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent:'center', marginVertical: 5}}>
 							<TextInput //source={usernameImg}
-								style={styles.input}
+								style={[styles.input, newStyle]}
 								placeholder={'Press to send... Hold to record!'/*this.props.recording*/}
 								placeholderTextColor='grey'
 								autoCapitalize={'none'}
 								returnKeyType={'done'}
 								autoCorrect={false}
+								editable={true}
+								multiline={true}
 								underlineColorAndroid='transparent'
 								onChangeText={(text) => this.setState({ comment: text })}
 								value={this.state.comment}
+								onContentSizeChange={(e) => this.updateSize(e.nativeEvent.contentSize.height)}
 							/>
-							{
-								//this.state.comment == '' ?
-								<AudioPlayer
-									postName =  { this.props.navigation.state.params.postName }
-									downloadUrl = { this.props.navigation.state.params.downloadUrl}
-									shoutTitle = { this.props.navigation.state.params.shoutTitle }
-									userName = { this.props.navigation.state.params.userName }
-									date = { this.props.navigation.state.params.date }
-									voiceTitle = { this.props.navigation.state.params.voiceTitle }
-									groupName = { this.props.navigation.state.params.groupName } 
-									groupKey = {this.props.navigation.state.params.groupKey}
-									groupCreator = { this.props.navigation.state.params.groupCreator }
-									lastModified = { this.props.navigation.state.params.lastModified }
-									comment = {this.state.comment}
-									myName = {this.props.fullName}/>
-								/*:
-								<TouchableOpacity
-									onPress = {() => {
-										var userId = firebaseApp.auth().currentUser.uid;
-										var d = new Date();
-										var commentTime = d.toLocaleTimeString() + ' at '+ d.toDateString();
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('commentUsers').push({
-											userId: userId,
-											FullName: this.props.fullName,
-											comment: this.state.comment,
-											commentTime: commentTime,
-										})
-										ToastAndroid.show('You have commented on this Shout!', ToastAndroid.SHORT);
-										this.setState({ comment: '' })
-										Keyboard.dismiss();
-										var comments;
-										firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('comments').once('value')
-										.then((snapshot) => {
-											comments = snapshot.val();
-											comments ++;
-											firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).update({
-												comments: comments,
-											})
-											.then(() => {
-												firebaseApp.database().ref().child('playerIds').on('value', (snap) => {
-													snap.forEach((child) => {
-														if(child.val().fullName == this.props.navigation.state.params.userName) {
-															fetch('https://onesignal.com/api/v1/notifications', {  
-																method: 'POST',
-																headers: {
-																	'Content-Type': 'application/json',
-																	"Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
-																},
-																body: JSON.stringify({
-																	app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
-																	include_player_ids: [child.key],
-																	data: {
-																		'nfType': 'nf_comment',
-																		'postName':  this.props.navigation.state.params.postName, 
-																		'downloadUrl': this.props.navigation.state.params.downloadUrl, 
-																		'shoutTitle': this.props.navigation.state.params.shoutTitle, 
-																		'userName': this.props.navigation.state.params.userName, 
-																		'date': this.props.navigation.state.params.date, 
-																		'voiceTitle': this.props.navigation.state.params.voiceTitle, 
-																		'groupName': this.props.navigation.state.params.groupName,
-																		'groupKey': this.props.navigation.state.params.groupKey,
-																	},
-																	headings:{"en": "A new comment on your shout"},
-																	contents: {'en': this.props.fullName + ' commented'},
-																})
-															})
-														}
-													});
-												});
-											})
-										})
-										.catch((error) => {
-										})
-									}}>
-									<ImageBackground source={require('../images/postshout.png')} style={{ height: 50, width: 50}}/>
-								</TouchableOpacity>
-								*/
-							}
+							<AudioPlayer
+								onUpload = {this.onUpload}
+								onComment = {this.onComment}
+								postName =  { this.props.navigation.state.params.postName }
+								downloadUrl = { this.props.navigation.state.params.downloadUrl}
+								shoutTitle = { this.props.navigation.state.params.shoutTitle }
+								userName = { this.props.navigation.state.params.userName }
+								date = { this.props.navigation.state.params.date }
+								voiceTitle = { this.props.navigation.state.params.voiceTitle }
+								groupName = { this.props.navigation.state.params.groupName } 
+								groupKey = {this.props.navigation.state.params.groupKey}
+								groupCreator = { this.props.navigation.state.params.groupCreator }
+								lastModified = { this.props.navigation.state.params.lastModified }
+								comment = {this.state.comment}
+								myName = {this.props.fullName}/>
 						</View>
 					</View>
 				</View>
@@ -500,7 +487,8 @@ const styles = StyleSheet.create({
 	input: {
 		backgroundColor: 'silver',
 		padding: 0,
-		paddingLeft:20,
+		paddingHorizontal:10,
+		paddingVertical: 10,
 		fontSize: 16,
 		color: 'black',
 		width: 250,

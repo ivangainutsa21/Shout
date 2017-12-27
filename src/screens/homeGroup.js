@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import {
-	StyleSheet, View,TouchableOpacity, Text, TextInput, Image, ListView
+	StyleSheet, View,TouchableOpacity, Text, TextInput, Image, ListView, ImageBackground, ScrollView
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import OneSignal 	from 'react-native-onesignal';
@@ -8,6 +8,7 @@ import OneSignal 	from 'react-native-onesignal';
 import { connect } from "react-redux";
 import { firebaseApp } 		from '../firebase'
 import store from '../store'
+import GridComponent from '../components/GridComponent'
 
 const group = store.getState().getUserInfo.group;
 const groupCount = store.getState().getUserInfo.group.length;
@@ -15,15 +16,17 @@ const groupCount = store.getState().getUserInfo.group.length;
 class HomeGroup extends Component {
 	constructor(props) {
         super(props);
-        const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         
         this.state = {
-            dataSource: ds.cloneWithRows(['row 1', 'row 2']),
-            
-            groups: [],
+            dataSource: [],
+            array: [],
+            allGroups: [],
+            privateGroups: [],
+            publicGroups: [],
             groupImage: [],
+            showGroupFilter: false,
+            groupTitle: 'Groups',
         }
-        this.renderRow = this.renderRow.bind(this);
 	}
 
 	static navigationOptions = {
@@ -40,11 +43,14 @@ class HomeGroup extends Component {
 		firebaseApp.database().ref('users/').child(userId).update({
             playerIds: this.props.playerIds,
         })
-            firebaseApp.database().ref().child('groups').on('value', (snap) => {
-                var groups = [];
+        firebaseApp.database().ref().child('groups').on('value', (snap) => {
+            var allGroups = [];
+            var publicGroups = [];
+            var privateGroups = [];
+            var promises = [];
+            promises.push(new Promise((resolve, reject) => {
                 snap.forEach((child) => {
                     let isGroup = false;
-                    
                     firebaseApp.database().ref().child('groups').child(child.key).child('privacy').on('value', (snap) => {
                         snap.forEach((child) => {
                             if(child.val().userId == userId)
@@ -53,8 +59,15 @@ class HomeGroup extends Component {
                             }
                         })
                     })
-                    if(child.val().privacy == undefined || isGroup == true) {
-                        groups.push({
+                    if(child.val().privacy == undefined) {
+                        allGroups.push({
+                            lastModified: child.val().lastModified,
+                            groupKey: child.key,
+                            groupName: child.val().groupName,
+                            thumbLink: child.val().thumbLink,
+                            groupCreator: child.val().groupCreator,
+                        });
+                        publicGroups.push({
                             lastModified: child.val().lastModified,
                             groupKey: child.key,
                             groupName: child.val().groupName,
@@ -62,9 +75,28 @@ class HomeGroup extends Component {
                             groupCreator: child.val().groupCreator,
                         });
                     }
+                    if(isGroup == true) {
+                        allGroups.push({
+                            lastModified: child.val().lastModified,
+                            groupKey: child.key,
+                            groupName: child.val().groupName,
+                            thumbLink: child.val().thumbLink,
+                            groupCreator: child.val().groupCreator,
+                        });
+
+                        privateGroups.push({
+                            lastModified: child.val().lastModified,
+                            groupKey: child.key,
+                            groupName: child.val().groupName,
+                            thumbLink: child.val().thumbLink,
+                            groupCreator: child.val().groupCreator,
+                        });
+                    }
+                    resolve();
                 })
-                
-                groups.sort(function(a, b){
+            }))
+            Promise.all(promises).then(() => {
+                allGroups.sort(function(a, b){
                     if(a.lastModified != undefined && b.lastModified == undefined) return -1;
                     if(a.lastModified == undefined && b.lastModified != undefined) return 1;
                     if(a.lastModified == undefined && b.lastModified == undefined) return 0;
@@ -72,85 +104,136 @@ class HomeGroup extends Component {
                     if(a.lastModified > b.lastModified) return -1;
                     return 0;
                 });
-                
-                groups.push({
-                    groupName: 'lastOneGroup',
+                privateGroups.sort(function(a, b){
+                    if(a.lastModified != undefined && b.lastModified == undefined) return -1;
+                    if(a.lastModified == undefined && b.lastModified != undefined) return 1;
+                    if(a.lastModified == undefined && b.lastModified == undefined) return 0;
+                    if(a.lastModified < b.lastModified) return 1;
+                    if(a.lastModified > b.lastModified) return -1;
+                    return 0;
+                });
+
+                publicGroups.sort(function(a, b){
+                    if(a.lastModified != undefined && b.lastModified == undefined) return -1;
+                    if(a.lastModified == undefined && b.lastModified != undefined) return 1;
+                    if(a.lastModified == undefined && b.lastModified == undefined) return 0;
+                    if(a.lastModified < b.lastModified) return 1;
+                    if(a.lastModified > b.lastModified) return -1;
+                    return 0;
+                });
+                this.setState({
+                    allGroups: allGroups,
+                    publicGroups: publicGroups,
+                    privateGroups: privateGroups,
                 })
                 this.setState({
-                    dataSource: this.state.dataSource.cloneWithRows(groups)
+                    dataSource: this.state.allGroups,
                 });
+            })
         })
     }
-    renderRow(item, sectionId, rowId){
-        return(
-            <View style={{marginBottom : 30, alignItems: 'center'}}>
-            {
-                item.groupName != 'lastOneGroup' ?
-                    <TouchableOpacity style={{backgroundColor: 'black', justifyContent:'center', alignItems:'center', width: 200, height: 100}}
-                        onPress = {() => {
-                            if(item.groupName != undefined && item.groupKey != undefined)
-                                this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey, groupCreator: item.groupCreator});
-                        }}>
-                        {
-                            item.thumbLink != undefined ?
-                                <Image source={{uri: item.thumbLink}} style={{height: 100, width: 200, justifyContent:'center', alignItems:'center'}}>
-                                    <Text style = {{fontSize: 22, backgroundColor: 'transparent', color: 'white', marginLeft: 10}}>{item.groupName}</Text>
-                                </Image>
-                                :
-                                <Text style = {{fontSize: 22, backgroundColor: 'transparent', color: 'white', marginLeft: 10,}}>{item.groupName}</Text>
-                        }
-                    </TouchableOpacity>
-                    :
-                    <TouchableOpacity 
-                        onPress = {() => {
-                        this.props.navigation.navigate('newGroup', {title: 'Adding New Group', groupName: undefined, privacy: 'public', isEdit: false,});
 
-                    }}>
-                        <Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>
-                    </TouchableOpacity>
-            }
-        </View>
-        );
+    onPressGridCell = (item) => {
+        this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey, groupCreator: item.groupCreator});
     }
+
 	render() {
         const { navigate } = this.props.navigation;
+        const abc = [];
         
 		return (
-			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
+			<View style={styles.container}>
+                
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
-					<TouchableOpacity
-						onPress = {() => {
-							navigate('DrawerOpen');
-						}}>
-						<Image source={require('../images/menu.png')} style={{height: 40, width: 40}}/>	
-					</TouchableOpacity>
-					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black',}}>Shout Groups</Text>
+                    <View style={{flexDirection: 'row', alignItems:'center',}} >
+                        <TouchableOpacity
+                            onPress = {() => {
+                                navigate('DrawerOpen');
+                            }}>
+                            <Image source={require('../images/menu.png')} style={{height: 20, width: 30}}/>	
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{flexDirection:'row', alignItems: 'center', marginLeft: 20}}
+                            onPress = {() => {
+                                this.setState({
+                                    showGroupFilter: !this.state.showGroupFilter
+                                })
+                            }}>
+                            <Text style={{fontSize: 24, }}>{this.state.groupTitle}</Text>
+                            <Image source={require('../images/groups.png')} style={{marginLeft: 10, height: 16, width: 16}}/>	
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity
+                        onPress = {() => {
+                            this.props.navigation.navigate('newGroup', {title: 'Adding New Group', groupName: undefined, privacy: 'public', isEdit: false,});
+                        }}>
+                        <Image source={require('../images/addgroup.png')} style={{ height: 25, width: 25}}/>	
+                        </TouchableOpacity>
 				</View>
-                {
-                    /*
-                <View style={{flexDirection: 'row', marginTop: 20, marginHorizontal: 20, alignItems: 'center'}}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder='Search for groups...'
-                        autoCapitalize={'none'}
-                        returnKeyType={'done'}
-                        autoCorrect={false}
-                        placeholderTextColor='grey'
-                        underlineColorAndroid='transparent'
-                        onChangeText={(text) => this.setState({ shoutTitle: text })}>
-                    </TextInput>
-                    <Image source={require('../images/search.png')} style={{width: 24, height: 24, marginLeft: -32, marginRight: 8}}/>
-                </View>
-                */
-                }
-                <Text style = {styles.text}>Shout Groups</Text>
-                <View style={{flex: 1, marginTop: 50, }}>
-                    <ListView
-                        dataSource={this.state.dataSource}
-                        renderRow={this.renderRow}
-                        enableEmptySections={true}
-                    />
-                </View>
+                
+					
+                <View style={{flex: 1, }}>
+                    <View style={{backgroundColor: 'whitesmoke', height: 160, width: 220, paddingHorizontal: 10, marginBottom: -160, marginLeft: 50, zIndex: 10, display: this.state.showGroupFilter == false ? 'none' : null, paddingVertical: 5}}>
+                    <TouchableOpacity style={{width: 200, height: 50, borderBottomColor: 'black', alignItems: 'center', justifyContent:'center', borderBottomWidth: 1}}
+							onPress = {() => {
+                                this.setState({
+                                    dataSource: this.state.allGroups,
+                                });
+                                this.setState({
+                                    groupTitle: 'All Groups'
+                                })
+                                this.setState({
+                                    showGroupFilter: false
+                                })
+							}}>
+							<Text style={{fontSize: 18}}>All Groups</Text>
+						</TouchableOpacity>
+
+						<TouchableOpacity style={{width: 200, height: 50, borderBottomColor: 'black', alignItems: 'center', justifyContent:'center', borderBottomWidth: 1}}
+							onPress = {() => {
+                                this.setState({
+                                    dataSource: this.state.publicGroups,
+                                });
+                                this.setState({
+                                    groupTitle: 'Public Groups'
+                                })
+                                this.setState({
+                                    showGroupFilter: false
+                                })
+							}}>
+							<Text style={{fontSize: 18}}>Public Groups</Text>
+						</TouchableOpacity>
+
+						<TouchableOpacity style={{width: 200, height: 50, alignItems: 'center', justifyContent:'center',}}
+							onPress = {() => {
+                                this.setState({
+                                    dataSource: this.state.privateGroups,
+                                });
+
+                                this.setState({
+                                    groupTitle: 'Private Groups'
+                                })
+                                this.setState({
+                                    showGroupFilter: false
+                                })
+						}}>
+							<Text style={{fontSize: 18}}>Private Groups</Text>
+						</TouchableOpacity>
+					</View>
+                    <View style={{height: 30, backgroundColor: 'darkgrey', paddingHorizontal: 10, flexDirection: 'row', justifyContent:'space-between', alignItems: 'center'}}>
+                        <Text style={{marginLeft: 10, display:'none'}}>All categories</Text>
+                        <TouchableOpacity 
+                                style={{flexDirection: 'row', alignItems: 'center', justifyContent:'center', display: 'none'}}
+                                onPress = {() => {
+                                    //this.props.navigation.navigate('newGroup', {title: 'Edit Group', groupName: this.props.navigation.state.params.groupName, privacy: 'private', isEdit: true, groupKey: this.props.navigation.state.params.groupKey});
+                            }}>
+                            <ImageBackground source={require('../images/category.png')} style={{ height: 18, width: 18}}/>
+                        </TouchableOpacity>
+                    </View>
+                    <GridComponent data={this.state.dataSource} onPress={this.onPressGridCell}>
+                    </GridComponent>
+                    </View>
 			</View>
 		);
 	}
