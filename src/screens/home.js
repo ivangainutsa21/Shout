@@ -1,55 +1,69 @@
 import React, { Component } from 'react';
 import {
-    StyleSheet, View,TouchableOpacity, Text, TextInput, ImageBackground, Image, ListView,DeviceEventEmitter, BackHandler, Alert,
+    StyleSheet, View,TouchableOpacity, Text, TextInput, ImageBackground, 
+    Image, DeviceEventEmitter, BackHandler, Alert, FlatList, Modal
 } from 'react-native';
 import RNAudioStreamer from 'react-native-audio-streamer';
-
 import { firebaseApp }      from '../firebase'
+import GestureRecognizer, {swipeDirections} from 'react-native-swipe-gestures';
 
 export default class Home extends Component {
     constructor(props) {
         super(props);
-        const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
         this.state = {
-            dataSource: ds.cloneWithRows(['row 1', 'row 2']),
+            dataSource: [],
 
             isPlaying: false,
 			playingRow: undefined,
 			showMore: false,
 			isAllPlaying: false,
-			playingRow: undefined,
             allRecords: [],
             shoutCount: 0,
+            isGroupMember: false,
+            displayModal: false,
+			currentRecord: 0,
         };
         this.renderRow = this.renderRow.bind(this);
         this.subscription = DeviceEventEmitter.addListener('RNAudioStreamerStatusChanged',this._statusChanged.bind(this));
     }
+    onSwipeRight(gestureState) {
+        this.props.navigation.goBack();
+    }
 
+    onSwipeUp(gestureState) {
+        RNAudioStreamer.pause();
+        this.setState({
+            playingRow: undefined,
+            isAllPlaying: false,
+            currentRecord: 0,
+            displayModal: false,
+        })
+    }
     _statusChanged(status) {
 		if(status == 'FINISHED') {
-			this.setState({
-				playingRow: undefined,
-				isPlaying: false,
-			})
 			if(this.state.isAllPlaying == true) {
-				var currentRecord = this.state.currentRecord;
-				currentRecord ++; 
-				this.setState({
-					currentRecord: currentRecord,
-				})
+                var currentRecord = this.state.currentRecord;
+                currentRecord ++;
 				if(currentRecord < this.state.allRecords.length)
 				{
+                    this.setState({
+                        currentRecord: currentRecord,
+                    })
 					RNAudioStreamer.setUrl(this.state.allRecords[currentRecord]);
 					RNAudioStreamer.play()
 				} else {
 					this.setState({
+                        playingRow: undefined,
 						isAllPlaying: false,
-						currentRecord: 0,
 					})
 				}
-			}
+            } else {
+                this.setState({
+                    playingRow: undefined,
+                    isPlaying: false,
+                })
+            }
 		}
-
 	}
 
     static navigationOptions = {
@@ -88,10 +102,7 @@ export default class Home extends Component {
 				})
                 
             });
-            /*
-            firebaseApp.database().ref().child('groups').child(this.props.nvigation.state.params.groupKey).update({
-                seenCount: workshops.length,
-            })*/
+            
             workshops.sort(function(a, b){
                 if(a.lastModified != undefined && b.lastModified == undefined) return -1;
                 if(a.lastModified == undefined && b.lastModified != undefined) return 1;
@@ -103,19 +114,53 @@ export default class Home extends Component {
 
             this.setState({
                 shoutCount: workshops.length,
-                dataSource: this.state.dataSource.cloneWithRows(workshops)
+                dataSource: workshops,
             });
         });
+        var userId = firebaseApp.auth().currentUser.uid;
+        firebaseApp.database().ref().child('groups').child(this.props.navigation.state.params.groupKey).child('privacy').on('value', (snap) => {
+            snap.forEach((child) => {
+                if(child.val().userId == userId) {
+                    this.setState({
+                        isGroupMember: true
+                    })
+                }
+            })            
+        })
     }
     onBackPress() {
+        let refreshFunc = this.props.navigation.state.params.refresh;
+            if(typeof refreshFunc == 'function')
+                refreshFunc();
         RNAudioStreamer.pause();
     }
-    renderRow(item, sectionId, rowId){
+    
+    renderRow = (row) => {
+        let item = row.item;
+        let rowId = row.index;
         return(
             <View style={{backgroundColor: 'whitesmoke', paddingVertical: 10, marginTop: 10}}>
+                <TouchableOpacity
+                    onPress = {() => {
+                        if(item.postName != null){
+                            RNAudioStreamer.pause();
+                            this.props.navigation.navigate('comment', {
+                                postName: item.postName, 
+                                downloadUrl: item.downloadUrl, 
+                                shoutTitle: item.shoutTitle, 
+                                userName: item.userName, 
+                                date: item.date, 
+                                voiceTitle: item.voiceTitle,
+                                lastModified: item.lastModified,
+                                groupName: this.props.navigation.state.params.groupName,
+                                groupKey: this.props.navigation.state.params.groupKey,
+                            });
+                        }
+                    }}>
                 <Text style={{fontSize: 12,}}>{item.userName}{/*, {item.date}*/}</Text>
                 <View style={{flexDirection: 'row'}}>
-                    <TouchableOpacity style={{}} activeOpacity={1}
+                    <TouchableOpacity style={{display: item.downloadUrl == null ? 'none' : null}} 
+                        activeOpacity={1}
                         onPress = {() => {
                             if(item.postName != null){
                                 RNAudioStreamer.pause();
@@ -148,7 +193,6 @@ export default class Home extends Component {
                             <Text style={{fontSize: 12, color: 'darkgray', marginLeft: 5}}>{item.likes}</Text>
                             <TouchableOpacity style={item.voiceTitle == undefined ? {marginLeft: 10, display: 'none'} : {marginLeft: 10, }}
                                 onPress = {() => {
-
 									this.setState({
 										isAllPlaying: false,
 									})
@@ -172,8 +216,8 @@ export default class Home extends Component {
 							</View>
 							<TouchableOpacity style={{marginRight: 10, paddingHorizontal: 5, display: (item.allRecords && item.allRecords.length > 0) ? null : 'none'}}
 								onPress = {() => {
-									
 									this.setState({
+                                        displayModal: true,
 										isPlaying: false,
 									})
 
@@ -186,7 +230,8 @@ export default class Home extends Component {
 									this.setState({
                                         playingRow: rowId,
 										isAllPlaying: true,
-										allRecords: item.allRecords,
+                                        allRecords: item.allRecords,
+                                        currentRecord: 0,
 									})
 									RNAudioStreamer.setUrl(item.allRecords[0]);
 									RNAudioStreamer.play()
@@ -196,6 +241,7 @@ export default class Home extends Component {
                         </View>
                     </View>
                 </View>
+                </TouchableOpacity>
             </View>
         );
     }
@@ -203,17 +249,26 @@ export default class Home extends Component {
     render() {
         const { navigate } = this.props.navigation;
         const userId = firebaseApp.auth().currentUser.uid;
+        const config = {
+            velocityThreshold: 0.3,
+            directionalOffsetThreshold: 80
+        };
+        const menuHeight = this.props.navigation.state.params.groupCreator == userId ? 110 : 55;
         return (
-            <View style={styles.container}>
-                <View style={{height: 80, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginHorizontal: 10}} >
+            <GestureRecognizer 
+                style={styles.container}
+                config={config}
+                onSwipeRight={() => this.onSwipeRight()}
+                onSwipeUp={() => this.onSwipeUp()}>
+                <View style={{height: 80, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginHorizontal: 20}} >
                     <Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black',}}>{this.props.navigation.state.params.groupName}</Text>
-                    <TouchableOpacity style={this.props.navigation.state.params.groupCreator == userId ? null : {display: 'none'}} 
+                    <TouchableOpacity style={{display: this.state.isGroupMember == true ? null : 'none', width: 24, alignItems: 'center'}} 
                         onPress = {() => {
 							this.setState({
 								showMore: !this.state.showMore
 							})
                     }}>
-                        <Image source={require('../images/more.png')} style={{height: 24, width: 24}}/>
+                        <Image source={require('../images/more.png')} style={{height: 30, width: 10}}/>
                     </TouchableOpacity>
                     
                 </View>
@@ -243,15 +298,18 @@ export default class Home extends Component {
 					<Text style={{}}>{this.state.shoutCount} Shouts</Text>
 				</View>
                 <View style = {{flex: 1, backgroundColor: 'white', paddingHorizontal: 10}}>
-					<View style={{backgroundColor: 'lightgrey', height: 110, width: 110, alignSelf: 'flex-end', marginBottom: -110,  paddingHorizontal: 5, zIndex: 10, display: this.state.showMore == false ? 'none' : null, paddingVertical: 5}}>
-						<TouchableOpacity style={{width: 100, height: 50, flexDirection: 'row', borderBottomColor: 'black', alignItems: 'center', justifyContent:'center', borderBottomWidth: 1}}
-							onPress = {() => {
-								this.props.navigation.navigate('newGroup', {title: 'Edit Group', groupName: this.props.navigation.state.params.groupName, privacy: 'private', isEdit: true, groupKey: this.props.navigation.state.params.groupKey});
-						}}>
-						<ImageBackground source={require('../images/edit.png')} style={{ height: 24, width: 24}}/>
-						<Text style={{marginLeft: 10}}>Edit</Text>
-						</TouchableOpacity>
+					<View style={{backgroundColor: 'lightgrey', height: menuHeight, width: 110, alignSelf: 'flex-end', marginBottom: -110,  paddingHorizontal: 5, zIndex: 10, display: this.state.showMore == false ? 'none' : null, paddingVertical: 5}}>
 						<TouchableOpacity style={{width: 100, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent:'center', }}
+							onPress = {() => {
+                                this.setState({
+                                    showMore: false,
+                                })
+								this.props.navigation.navigate('newGroup', {title: 'Edit Group', groupName: this.props.navigation.state.params.groupName, privacy: 'private', isEdit: true, groupKey: this.props.navigation.state.params.groupKey, groupCreator: this.props.navigation.state.params.groupCreator});
+						}}>
+						    <ImageBackground source={require('../images/edit.png')} style={{ height: 24, width: 24}}/>
+						    <Text style={{marginLeft: 10}}>Edit</Text>
+						</TouchableOpacity>
+						<TouchableOpacity style={{width: 100, height: 50, flexDirection: 'row', alignItems: 'center', justifyContent:'center', display: this.props.navigation.state.params.groupCreator == userId ? null : 'none', borderTopColor: 'black', borderTopWidth: 1}}
 							onPress = {() => {
 								Alert.alert(
 									'Confirm',
@@ -311,11 +369,12 @@ export default class Home extends Component {
 							<Text style={{marginLeft: 10}}>Delete</Text>
 						</TouchableOpacity>
 					</View>
-                    <ListView
+                    <FlatList
 						style = {{zIndex: 0}}
-                        dataSource={this.state.dataSource}
-                        renderRow={this.renderRow}
-                        enableEmptySections={true}
+                        data={this.state.dataSource}
+                        renderItem={this.renderRow}
+                        extraData={this.state}
+                        keyExtractor={item => item.postName}
                     />
     
                 </View>
@@ -324,6 +383,10 @@ export default class Home extends Component {
                         style = {{}}
                         onPress = {() => {
                             RNAudioStreamer.pause();
+                            let refreshFunc = this.props.navigation.state.params.refresh;
+                            
+                            if(typeof refreshFunc == 'function')
+                                refreshFunc();
                             this.props.navigation.goBack();
                         }}>
                         <Image source={require('../images/home.png')} style={{width: 32, height: 32,}}/>
@@ -357,7 +420,67 @@ export default class Home extends Component {
                         <Image source={require('../images/home_user.png')} style={{width: 32, height: 32,}}/>
                     </TouchableOpacity>
                 </View>
-            </View>
+                <Modal
+                    visible={this.state.displayModal}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => {}}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <View>
+                                <Text style = {{color: 'white', alignSelf: 'center', fontSize: 36}}> Playing Now </Text>
+                                <View style={{flexDirection: 'row', paddingHorizontal: 20, alignItems: 'center', justifyContent: 'space-between'}}>
+                                    <TouchableOpacity
+                                        style={{marginRight: 30}}
+                                        onPress = {() => {
+                                            var currentRecord = this.state.currentRecord;
+                                            currentRecord --;
+                                            if(currentRecord >= 0)
+                                            {
+                                                this.setState({
+                                                    currentRecord: currentRecord,
+                                                })
+                                                RNAudioStreamer.setUrl(this.state.allRecords[currentRecord]);
+                                                RNAudioStreamer.play()
+                                            }
+                                        }}>
+                                        <Image source={require('../images/backward.png')} style={{width: 32, height: 32,}}/>
+                                    </TouchableOpacity>
+                                    <Text style = {{color: 'white', fontSize: 96}}>{this.state.allRecords.length}<Text style = {{color: 'white', fontSize: 48}}>/{this.state.currentRecord + 1}</Text></Text>
+                                    <TouchableOpacity
+                                        style={{marginLeft: 30}}
+                                        onPress = {() => {
+                                            var currentRecord = this.state.currentRecord;
+                                            currentRecord ++;
+                                            if(currentRecord < this.state.allRecords.length)
+                                            {
+                                                this.setState({
+                                                    currentRecord: currentRecord,
+                                                })
+                                                RNAudioStreamer.setUrl(this.state.allRecords[currentRecord]);
+                                                RNAudioStreamer.play()
+                                            }
+                                        }}>
+                                        <Image source={require('../images/forward.png')} style={{width: 32, height: 32,}}/>
+                                    </TouchableOpacity>
+                                </View>
+                                <Text style = {{color: 'white', alignSelf: 'center', fontSize: 14, marginTop: 20}}> Swipe up to cancel the player </Text>
+                                {
+                                    /*
+                                <TouchableOpacity onPress={() => {this.onStopPress()}}>
+                                    <Image style={styles.largeIcon} source={require('./images/stop.png')} />
+                                    <Text style={styles.textCenter}>Stop</Text>
+                                </TouchableOpacity>
+                                
+                                
+                                <Text style={styles.textCenter}>{this.state.currentTime}s</Text>
+                                */}
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            </GestureRecognizer>
         );
     }
 }
@@ -380,4 +503,25 @@ const styles = StyleSheet.create({
         borderColor: 'black',
         borderWidth: 1,
     },
+	modalContainer: { 
+		backgroundColor: 'rgba(0, 0, 0, 0.75)',
+		position: 'relative',
+		flex: 1,
+		justifyContent: 'center',
+	},
+	modalContent: {
+		flex: 1, 
+		flexDirection: 'row', 
+		justifyContent: 'center', 
+		alignItems: 'center',
+	},
+	textCenter: {
+		color: '#ddd', 
+		fontSize: 18, 
+		textAlign: 'center',
+	},
+	largeIcon: {
+		width: 80, 
+		height: 80,
+	},
 });

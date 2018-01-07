@@ -44,7 +44,6 @@ class GridComponent extends Component {
   }
 
   render() {
-    console.log('GridComponent', this.props.data);
     var groups = this.groupItems(this.props.data, 3);
     var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
     return (

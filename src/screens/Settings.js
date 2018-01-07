@@ -24,11 +24,12 @@ export default class Settings extends Component {
 			<ImageBackground style={styles.container} source={srcLoginBackground}>
 				<View style={{flex: 1, justifyContent: 'flex-start',}} >
 					<View style={{alignItems: 'flex-start'}} >
-						<TouchableOpacity style={{marginTop: 30, marginLeft: 30}} 
+						<TouchableOpacity
+						style={{height: 40, width: 40, alignItems: 'center', justifyContent: 'center'}}
 							onPress = {() => {
 								this.props.navigation.dispatch(backAction);
 							}}>
-							<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+							<Image source={require('../images/backbtn.png')} style={{height: 20, width: 20}}/>	
 						</TouchableOpacity>
 					</View>
 					<View style={{alignItems: 'flex-end'}} >

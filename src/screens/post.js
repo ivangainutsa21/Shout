@@ -37,7 +37,6 @@ class Post extends Component {
 		};
 	}
 
-
 	static navigationOptions = {
 		header: null
 	};
@@ -79,26 +78,37 @@ class Post extends Component {
 			"July", "Aug", "Sep", "Oct", "Nov", "Dec"
 		];
 		var postDate = date.getDate().toString() + 'th of ' + monthNames[date.getMonth()];
-		const image = Platform.OS === 'ios' ? this.state.thumbnail.replace('file://', '') : this.state.thumbnail;
-		const Blob = RNFetchBlob.polyfill.Blob
-		const fs = RNFetchBlob.fs
-		window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
-		window.Blob = Blob
-	
-		let uploadBlob = null
-		const imageRef = firebaseApp.storage().ref('images').child(uploadName + '.jpg')
-		let mime = 'image/jpg'
-		fs.readFile(image, 'base64')
-			.then((data) => {
-			return Blob.build(data, { type: `${mime};BASE64` })
-		})
-		.then((blob) => {
-			uploadBlob = blob
-			return imageRef.put(blob, { contentType: mime })
+
+		new Promise((resolve, reject) => {
+			if(this.state.thumbnail == null) {
+				resolve(null);
+			}
+			const image = Platform.OS === 'ios' ? this.state.thumbnail.replace('file://', '') : this.state.thumbnail;
+			const Blob = RNFetchBlob.polyfill.Blob
+			const fs = RNFetchBlob.fs
+			window.XMLHttpRequest = RNFetchBlob.polyfill.XMLHttpRequest
+			window.Blob = Blob
+		
+			let uploadBlob = null
+			const imageRef = firebaseApp.storage().ref('images').child(uploadName + '.jpg')
+			let mime = 'image/jpg'
+			fs.readFile(image, 'base64')
+				.then((data) => {
+				return Blob.build(data, { type: `${mime};BASE64` })
 			})
-		.then(() => {
-			uploadBlob.close()
-			return imageRef.getDownloadURL();
+			.then((blob) => {
+				uploadBlob = blob
+				return imageRef.put(blob, { contentType: mime })
+				})
+			.then(() => {
+				uploadBlob.close()
+				return imageRef.getDownloadURL();
+			})
+			.then((url) => {
+				resolve(url);
+			})
+			.catch((error) => {
+			})
 		})
 		.then((url) => {
 			var email = firebaseApp.auth().currentUser.email;
@@ -134,9 +144,15 @@ class Post extends Component {
 			})
 			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
 				thumbLink : url,
+				lastModified: lastModified,
 			})
-			firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).update({
-				lastModified: lastModified
+			firebaseApp.database().ref('users').child(userId).child('shouts').once('value', (snap) => {
+				var shouts = snap.val();
+				shouts ++;
+				firebaseApp.database().ref('users').child(userId).update({
+					shouts,
+					lastActivity: date.getDate() + '/' + (date.getMonth() + 1) + '/' + date.getFullYear(),
+				})
 			})
 			
 			var voiceTitle = undefined;
@@ -248,10 +264,8 @@ class Post extends Component {
 					this.props.navigation.goBack();
 				}) 
 			})
+			
 		})
-		.catch((error) => {
-		})
-		
 	}
 
 	render() {
@@ -270,6 +284,7 @@ class Post extends Component {
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
 					
 					<TouchableOpacity
+						style={{height: 40, width: 40, alignItems: 'center', justifyContent: 'center'}}
 						onPress = {() => {
 							if(currentSound != null)
 							{
@@ -277,7 +292,7 @@ class Post extends Component {
 							}
 							this.props.navigation.goBack();
 						}}>
-						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+						<Image source={require('../images/backbtn.png')} style={{height: 20, width: 20}}/>	
 					</TouchableOpacity>
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black',}}>Shout Now</Text>
 				</View>
@@ -298,22 +313,20 @@ class Post extends Component {
 									console.log('User tapped custom button: ', response.customButton);
 								}
 								else {
-									Image.getSize(response.uri, (width, height) => {
-										let rotation = 0;
-										if(height > width){
-											rotation = 90;
-										}
-										ImageResizer.createResizedImage(response.uri, 1024, 1024, 'JPEG', 100, rotation)
-										.then(({uri}) => {
-												this.setState({
-												thumbnail: uri
-											})
-										}).catch((err) => {
+									let rotation = 0;
+									if ( response.originalRotation === 90 && response.uri.indexOf('com.socialcommunityapp.provider') > 0) {
+										rotation = 90
+									}
+									ImageResizer.createResizedImage(response.uri, 1024, 1024, 'JPEG', 100, rotation)
+									.then(({uri}) => {
 											this.setState({
-													thumbnail: null,
-											})
-										});
-									})
+											thumbnail: uri
+										})
+									}).catch((err) => {
+										this.setState({
+												thumbnail: null,
+										})
+									});
 									this.setState({
 										originImage: response.uri,
 									})
@@ -411,7 +424,7 @@ class Post extends Component {
 						<TouchableOpacity 
 							style={[styles.button, {marginTop: 5,}]}
 							onPress = {() => {
-								if(this.state.thumbnail == null || this.state.shoutTitle == null)
+								if( this.state.shoutTitle == null )
 								{
 									alert("Fill required fields.");
 									return;

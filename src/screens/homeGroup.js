@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import {
-	StyleSheet, View,TouchableOpacity, Text, TextInput, Image, ListView, ImageBackground, ScrollView
+	StyleSheet, View,TouchableOpacity, Text, TextInput, Image, ImageBackground, ScrollView, 
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import OneSignal 	from 'react-native-onesignal';
@@ -19,13 +19,14 @@ class HomeGroup extends Component {
         
         this.state = {
             dataSource: [],
-            array: [],
             allGroups: [],
             privateGroups: [],
             publicGroups: [],
+            domainGroups: [],
             groupImage: [],
             showGroupFilter: false,
             groupTitle: 'Groups',
+            domain: '',
         }
 	}
 
@@ -35,6 +36,9 @@ class HomeGroup extends Component {
     
 	componentWillMount() {
         var userId = firebaseApp.auth().currentUser.uid;
+        this.setState({
+            domain: firebaseApp.auth().currentUser.email.slice(firebaseApp.auth().currentUser.email.indexOf('@')),
+        })
 		firebaseApp.database().ref('playerIds/').child(this.props.playerIds).set({
             fullName: this.props.fullName,
             userId: userId,
@@ -47,6 +51,7 @@ class HomeGroup extends Component {
             var allGroups = [];
             var publicGroups = [];
             var privateGroups = [];
+            var domainsGroups = [];
             var promises = [];
             promises.push(new Promise((resolve, reject) => {
                 snap.forEach((child) => {
@@ -59,6 +64,7 @@ class HomeGroup extends Component {
                             }
                         })
                     })
+                    
                     if(child.val().privacy == undefined) {
                         allGroups.push({
                             lastModified: child.val().lastModified,
@@ -84,13 +90,23 @@ class HomeGroup extends Component {
                             groupCreator: child.val().groupCreator,
                         });
 
-                        privateGroups.push({
-                            lastModified: child.val().lastModified,
-                            groupKey: child.key,
-                            groupName: child.val().groupName,
-                            thumbLink: child.val().thumbLink,
-                            groupCreator: child.val().groupCreator,
-                        });
+                        if(child.val().domain == undefined) {
+                            privateGroups.push({
+                                lastModified: child.val().lastModified,
+                                groupKey: child.key,
+                                groupName: child.val().groupName,
+                                thumbLink: child.val().thumbLink,
+                                groupCreator: child.val().groupCreator,
+                            });
+                        }else {
+                            domainsGroups.push({
+                                lastModified: child.val().lastModified,
+                                groupKey: child.key,
+                                groupName: child.val().groupName,
+                                thumbLink: child.val().thumbLink,
+                                groupCreator: child.val().groupCreator,
+                            });
+                        }
                     }
                     resolve();
                 })
@@ -121,10 +137,22 @@ class HomeGroup extends Component {
                     if(a.lastModified > b.lastModified) return -1;
                     return 0;
                 });
+
+
+                domainsGroups.sort(function(a, b){
+                    if(a.lastModified != undefined && b.lastModified == undefined) return -1;
+                    if(a.lastModified == undefined && b.lastModified != undefined) return 1;
+                    if(a.lastModified == undefined && b.lastModified == undefined) return 0;
+                    if(a.lastModified < b.lastModified) return 1;
+                    if(a.lastModified > b.lastModified) return -1;
+                    return 0;
+                });
+
                 this.setState({
                     allGroups: allGroups,
                     publicGroups: publicGroups,
                     privateGroups: privateGroups,
+                    domainGroups: domainsGroups,
                 })
                 this.setState({
                     dataSource: this.state.allGroups,
@@ -134,8 +162,9 @@ class HomeGroup extends Component {
     }
 
     onPressGridCell = (item) => {
-        this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey, groupCreator: item.groupCreator});
+        this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey, groupCreator: item.groupCreator, refresh: item.refresh});
     }
+
 
 	render() {
         const { navigate } = this.props.navigation;
@@ -143,7 +172,6 @@ class HomeGroup extends Component {
         
 		return (
 			<View style={styles.container}>
-                
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
                     <View style={{flexDirection: 'row', alignItems:'center',}} >
                         <TouchableOpacity
@@ -160,22 +188,42 @@ class HomeGroup extends Component {
                                     showGroupFilter: !this.state.showGroupFilter
                                 })
                             }}>
-                            <Text style={{fontSize: 24, }}>{this.state.groupTitle}</Text>
+                            <Text style={{fontSize: 18,}}>{this.state.groupTitle}</Text>
                             <Image source={require('../images/groups.png')} style={{marginLeft: 10, height: 16, width: 16}}/>	
                         </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        onPress = {() => {
-                            this.props.navigation.navigate('newGroup', {title: 'Adding New Group', groupName: undefined, privacy: 'public', isEdit: false,});
-                        }}>
-                        <Image source={require('../images/addgroup.png')} style={{ height: 25, width: 25}}/>	
+                    <View style={{flexDirection: 'row', alignItems:'center',}} >
+                        <TouchableOpacity
+                            onPress = {() => {
+                                this.props.navigation.navigate('notifications');
+                            }}>
+                            <Image source={require('../images/home_notification.png')} style={{ height: 25, width: 25}}/>	
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress = {() => {
+                                const resetHome = NavigationActions.reset({
+                                    index: 0,
+                                    actions: [
+                                      NavigationActions.navigate({ routeName: 'homeGroup'})
+                                    ]
+                                })
+                                this.props.navigation.dispatch(resetHome);
+                            }}>
+                            <Image source={require('../images/update.png')} style={{marginLeft: 10, height: 25, width: 25}}/>	
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress = {() => {
+                                this.props.navigation.navigate('newGroup', {title: 'Adding New Group', groupName: undefined, privacy: 'public', isEdit: false,});
+                            }}>
+                            <Image source={require('../images/addgroup.png')} style={{ height: 25, width: 25, marginLeft: 10}}/>	
+                        </TouchableOpacity>
+                    </View>
 				</View>
                 
 					
                 <View style={{flex: 1, }}>
-                    <View style={{backgroundColor: 'whitesmoke', height: 160, width: 220, paddingHorizontal: 10, marginBottom: -160, marginLeft: 50, zIndex: 10, display: this.state.showGroupFilter == false ? 'none' : null, paddingVertical: 5}}>
-                    <TouchableOpacity style={{width: 200, height: 50, borderBottomColor: 'black', alignItems: 'center', justifyContent:'center', borderBottomWidth: 1}}
+                    <View style={{backgroundColor: 'whitesmoke', height: 210, width: 220, paddingHorizontal: 10, marginBottom: -210, marginLeft: 50, zIndex: 10, display: this.state.showGroupFilter == false ? 'none' : null, paddingVertical: 5}}>
+                        <TouchableOpacity style={{width: 200, height: 50, borderBottomColor: 'black', alignItems: 'center', justifyContent:'center', borderBottomWidth: 1}}
 							onPress = {() => {
                                 this.setState({
                                     dataSource: this.state.allGroups,
@@ -205,8 +253,8 @@ class HomeGroup extends Component {
 							<Text style={{fontSize: 18}}>Public Groups</Text>
 						</TouchableOpacity>
 
-						<TouchableOpacity style={{width: 200, height: 50, alignItems: 'center', justifyContent:'center',}}
-							onPress = {() => {
+                        <TouchableOpacity style={{width: 200, height: 50, alignItems: 'center', justifyContent:'center', borderBottomColor: 'black', borderBottomWidth: 1}}
+                            onPress = {() => {
                                 this.setState({
                                     dataSource: this.state.privateGroups,
                                 });
@@ -217,9 +265,25 @@ class HomeGroup extends Component {
                                 this.setState({
                                     showGroupFilter: false
                                 })
-						}}>
-							<Text style={{fontSize: 18}}>Private Groups</Text>
-						</TouchableOpacity>
+                        }}>
+                            <Text style={{fontSize: 18}}>Private Groups</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={{width: 200, height: 50, alignItems: 'center', justifyContent:'center', }}
+                            onPress = {() => {
+                                this.setState({
+                                    dataSource: this.state.domainGroups,
+                                });
+
+                                this.setState({
+                                    groupTitle: 'Domain Groups'
+                                })
+                                this.setState({
+                                    showGroupFilter: false
+                                })
+                        }}>
+                            <Text style={{fontSize: 18}}>({this.state.domain})</Text>
+                        </TouchableOpacity>
 					</View>
                     <View style={{height: 30, backgroundColor: 'darkgrey', paddingHorizontal: 10, flexDirection: 'row', justifyContent:'space-between', alignItems: 'center'}}>
                         <Text style={{marginLeft: 10, display:'none'}}>All categories</Text>

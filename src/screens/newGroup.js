@@ -18,8 +18,8 @@ class NewGroup extends Component {
 
         this.state = {
             dataSource: ds.cloneWithRows(['row 1', 'row 2']),
-
-            privacy: [{label: 'Public', value: 'public'}, {label: 'Private', value: 'private'},],
+            allMembers: ds.cloneWithRows(['row 1', 'row 2']),
+            privacy: [{label: 'Public', value: 'public'}, {label: 'Private', value: 'private'}, {label: 'Domain', value: 'domain'}],
             value: this.props.navigation.state.params.privacy,
             valueIndex: this.props.navigation.state.params.privacy == 'public' ? 0 : 1,
             groupName: this.props.navigation.state.params.groupName,
@@ -28,9 +28,12 @@ class NewGroup extends Component {
             invitatedUsers: [],
             isKeyboard: false,
             groupUsers: [],
+            allDomains: [],
+            domain: ''
         }
         this.onChangeSearch = this.onChangeSearch.bind(this);
         this.renderRow = this.renderRow.bind(this);
+        this.renderMember = this.renderMember.bind(this);
         this.createNewGroup = this.createNewGroup.bind(this);
 	}
 
@@ -55,24 +58,65 @@ class NewGroup extends Component {
     }
 	componentDidMount() {
         var allEmails = [];
+        var allDomains = [];
+        var myEmail = firebaseApp.auth().currentUser.email;
+        var domain = myEmail.slice(myEmail.indexOf('@'));
+        this.setState({domain});
         firebaseApp.database().ref('users/').on('value', (snap) => {
             snap.forEach((child) => {
                 allEmails.push({
                     email: child.val().email,
                     name: child.val().FullName,
                     userId: child.key,
-                    invitatedUsers: [],
+                    //invitatedUsers: [],
                 })
+                var email = child.val().email;
+                if(email != undefined && email.slice(email.indexOf('@')) == domain){
+                    allDomains.push({
+                        email: child.val().email,
+                        name: child.val().FullName,
+                        userId: child.key,
+                       // invitatedUsers: [],
+                    })
+                }
             })
-        })
+            this.setState({
+                allEmails: allEmails,
+                allDomains: allDomains,
+            })
 
-        this.setState({
-            allEmails: allEmails,
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows(allEmails)
+            });
         })
-
+        var allMembers = [];
         this.setState({
-            dataSource: this.state.dataSource.cloneWithRows(allEmails)
+            allMembers: this.state.allMembers.cloneWithRows(allMembers)
         });
+        if(this.props.navigation.state.params.isEdit == true)
+        {
+            firebaseApp.database().ref('groups/').child(this.props.navigation.state.params.groupKey).child('privacy').on('value', (snap) => {
+                var allMembers = [];
+                var promises = [];
+                snap.forEach((child) =>{
+                    promises.push(new Promise((resolve, reject) => {
+                        firebaseApp.database().ref('users/').child(child.val().userId).on('value', (snap) => {
+                            allMembers.push({
+                                fullName: snap.val().FullName,
+                            })
+                            resolve();
+                        })
+                    }))
+                })
+                Promise.all(promises).then(() => {
+                    this.setState({
+                        allMembers: this.state.allMembers.cloneWithRows(allMembers)
+                    });
+                })
+
+                console.log(this.state.allMembers);
+            })
+        }
 	}
 
 	addZero = (i) =>{
@@ -88,7 +132,6 @@ class NewGroup extends Component {
 
         if(this.props.navigation.state.params.isEdit == true)
         {
-
             var date = new Date();
             var lastModified = date.getUTCFullYear().toString() + '_' +
             this.addZero(date.getUTCMonth()) +	 '_' +
@@ -101,6 +144,13 @@ class NewGroup extends Component {
                 lastModified: lastModified
             });
             var promises = [];
+            if(this.state.invitatedUsers.length == 0) {
+                this.setState({
+                    isUploading: false,
+                })
+                this.props.navigation.goBack();
+            }
+
             this.state.invitatedUsers.forEach((invitatedUser) => {
                 promises.push(new Promise((resolve, reject) => {
                     firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(this.props.navigation.state.params.groupKey).update({
@@ -171,32 +221,70 @@ class NewGroup extends Component {
             this.addZero(date.getUTCSeconds()) + '_' +
             this.addZero(date.getUTCMilliseconds());
 
-                firebaseApp.database().ref().child('groups').child(groupName).update({
-                    groupName: this.state.groupName,
-                    groupCreator: userId,
-                    lastModified: lastModified
+            firebaseApp.database().ref().child('groups').child(groupName).update({
+                groupName: this.state.groupName,
+                groupCreator: userId,
+                lastModified: lastModified
+            })
+            .then(() => {
+                this.setState({
+                    isUploading: false,
                 })
-                .then(() => {
-                    this.setState({
-                        isUploading: false,
-                    })
-                    this.props.navigation.goBack();
-                })
-                .catch(() => {
-                })
+                this.props.navigation.goBack();
+            })
+            .catch(() => {
+            })
             
             if(this.state.value == 'private') {
                 firebaseApp.database().ref().child('groups').child(groupName).child('privacy').push({
                     userId
                 });
                 this.state.invitatedUsers.forEach((invitatedUser) => {
-                        firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(groupName).update({
+                    firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(groupName).update({
+                        groupName: this.state.groupName,
+                        playerIds: this.props.playerIds,
+                        userName: this.props.fullName,
+                    })
+                    .then(() => {
+                        firebaseApp.database().ref().child('users').child(invitatedUser).child('playerIds').once(('value'), (snap) => {
+                            fetch('https://onesignal.com/api/v1/notifications', {  
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    "Authorization": "Basic NzliM2FkMzItYmViNy00ZmFkLTg1MTUtNjk1MTllNGFjNGQ2"
+                                },
+                                body: JSON.stringify({
+                                    app_id: "1198e53e-f4a9-4d2d-abe2-fec727b94e11",
+                                    include_player_ids: [snap.val()],
+                                    data: {
+                                        'nfType': 'nf_invitation',
+                                    },
+                                    headings:{"en": "A new comment on your shout"},
+                                    contents: {'en': this.props.fullName + ' want to invite you to ' + this.state.groupName},
+                                })
+                            })
+                        })
+        
+                    })
+                    .catch(() => {
+                    })
+                })
+            } else if(this.state.value == 'domain') {
+                firebaseApp.database().ref().child('groups').child(groupName).child('privacy').push({
+                    userId
+                });
+                firebaseApp.database().ref().child('groups').child(groupName).update({
+                    domain: this.state.domain
+                });
+                this.state.allDomains.forEach((domain) => {
+                    if(domain.userId != userId) {
+                        firebaseApp.database().ref().child('users').child(domain.userId).child('pendingRequests').child(groupName).update({
                             groupName: this.state.groupName,
                             playerIds: this.props.playerIds,
                             userName: this.props.fullName,
                         })
                         .then(() => {
-                            firebaseApp.database().ref().child('users').child(invitatedUser).child('playerIds').on(('value'), (snap) => {
+                            firebaseApp.database().ref().child('users').child(domain.userId).child('playerIds').once(('value'), (snap) => {
                                 fetch('https://onesignal.com/api/v1/notifications', {  
                                     method: 'POST',
                                     headers: {
@@ -214,11 +302,12 @@ class NewGroup extends Component {
                                     })
                                 })
                             })
-            
                         })
                         .catch(() => {
                         })
+                    }
                 })
+
             }
 
             
@@ -269,24 +358,42 @@ class NewGroup extends Component {
         );
     }
 
+
+    renderMember(item, sectionId, rowId){
+        return(
+            <View style={{marginTop: 5, }}>
+                <TouchableOpacity 
+                    style={{borderBottomColor: 'black', borderBottomWidth: 1, marginHorizontal: 10}}
+                    onPress = {() => {
+                       
+                    }}
+                >
+                {/*<Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>*/}
+                <Text style={{fontSize: 14}}>{item.fullName} is a member</Text>
+                </TouchableOpacity>
+        </View>
+        );
+    }
 	render() {
         const { navigate } = this.props.navigation;
+        const userId = firebaseApp.auth().currentUser.uid;
         
 		return (
 			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
                 <Spinner visible={this.state.isUploading} textContent={"Creating a group..."} textStyle={{color: '#FFF'}} />
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity
+						style={{height: 40, width: 40, alignItems: 'center', justifyContent: 'center'}}
 						onPress = {() => {
 							this.props.navigation.goBack();
 					    }}>
-						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+						<Image source={require('../images/backbtn.png')} style={{height: 20, width: 20}}/>	
 					</TouchableOpacity>
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>{this.props.navigation.state.params.title}</Text>
 				</View>
-                    <Text style = {[styles.text, style={marginTop: 20}]}>Group details</Text>
-                    <View style={{flexDirection: 'row', alignItems: 'center', marginLeft: 50, marginTop: 10}}>
-                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', fontWeight: 'bold'}}>Name</Text>
+                    <Text style = {[styles.text, style={marginTop: 10}]}>Group details</Text>
+                    <View style={{flexDirection: 'row', alignItems: 'center', marginLeft: 30, marginTop: 10}}>
+                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', }}>Name</Text>
                         {
                             this.props.navigation.state.params.groupName == undefined ?
                                 <TextInput
@@ -301,37 +408,36 @@ class NewGroup extends Component {
                                     onChangeText={(text) => this.setState({groupName: text})}
                                     value={this.state.groupName}/>
                             :
-                                <Text style = {{marginLeft: 50, fontWeight: 'bold', fontSize: 18}}>{this.props.navigation.state.params.groupName}</Text>
+                                <Text style = {{marginLeft: 50, fontSize: 18}}>{this.props.navigation.state.params.groupName}</Text>
                         }
                     </View>
                     
-                    <View style={{flexDirection: 'row', alignItems: 'center', marginLeft: 50, marginTop: 10}}>
-                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', fontWeight: 'bold'}}>Privacy</Text>
-                        <View style={{marginLeft: 30}}>
-                            <RadioForm 
-                                formHorizontal={true} 
-                                animation={true} 
-                                accessible={false}
-                            >
-                            {this.state.privacy.map((obj, i) => {
-                                var onPress = (value, index) => {
-                                    if(this.props.navigation.state.params.isEdit == true)
-                                    {
-                                        this.setState({
-                                            value: 'private',
-                                            valueIndex: 1
-                                        })
-                                        return;
-                                    }
+                    <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 30, marginVertical: 10}}>Is this group for public or private</Text>
+                    <View style={{alignSelf: 'center'}}>
+                        <RadioForm 
+                            formHorizontal={true} 
+                            animation={true} 
+                            accessible={false}
+                        >
+                        {this.state.privacy.map((obj, i) => {
+                            var onPress = (value, index) => {
+                                if(this.props.navigation.state.params.isEdit == true)
+                                {
                                     this.setState({
-                                        value: value,
-                                        valueIndex: index
+                                        value: 'private',
+                                        valueIndex: 1
                                     })
+                                    return;
                                 }
-                                return (
-                                <RadioButton labelHorizontal={true} key={i} >
-                                    {/*  You can set RadioButtonLabel before RadioButtonInput */}
-                                    <RadioButtonInput
+                                this.setState({
+                                    value: value,
+                                    valueIndex: index
+                                })
+                            }
+                            return (
+                            <RadioButton labelHorizontal={true} key={i} >
+                                {/*  You can set RadioButtonLabel before RadioButtonInput */}
+                                <RadioButtonInput
                                     obj={obj}
                                     index={i}
                                     isSelected={this.state.valueIndex === i}
@@ -341,26 +447,38 @@ class NewGroup extends Component {
                                     buttonSize={10}
                                     buttonStyle={{}}
                                     buttonWrapStyle={{marginLeft: 10}}
-                                    />
-                                    <RadioButtonLabel
+                                />
+                                <RadioButtonLabel
                                     style={{marginLeft: 10}}
                                     obj={obj}
                                     index={i}
                                     onPress={onPress}
                                     labelStyle={{color: '#000', marginLeft: 5}}
                                     labelWrapStyle={{}}
-                                    />
-                                </RadioButton>
-                                )
-                            })}
-                            </RadioForm>
+                                />
+                            </RadioButton>
+                            )
+                        })}
+                        </RadioForm>
+                    </View>
+                <View style={{flex: 0.7, marginTop: 10, }}>
+                    <View style={{flex: 1, display: this.state.value == 'private' ? null: 'none'}}>
+                        <Text style = {styles.text}>Members</Text>
+                        <View style={{flex: 1, marginHorizontal: 20, marginTop: 10, borderColor: 'black', borderWidth: 1, borderRadius: 10}}>
+                            <ListView
+                                style = {{flex: 1}}
+                                dataSource={this.state.allMembers}
+                                renderRow={this.renderMember}
+                                enableEmptySections={true}
+                            />
                         </View>
                     </View>
-                <View style={{flex: 1, marginTop: 20, marginBottom: 20}}>
-                    <View style={{flex: 1, display: this.state.value == 'public' ? 'none' : null, }}>
+                </View>
+                <View style={{flex: 1, marginTop: 10,}}>
+                    <View style={{flex: 1, display: this.state.value == 'private' ? null: 'none'}}>
                         <Text style = {styles.text}>Adding Users</Text>
-                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 20, marginTop: 20}}>Invite Users</Text>
-                        <View style={{flexDirection: 'row', marginTop: 20, marginHorizontal: 20, alignItems: 'center'}}>
+                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 20, marginTop: 10}}>Invite Users</Text>
+                        <View style={{flexDirection: 'row', marginTop: 10, marginHorizontal: 20, alignItems: 'center'}}>
                             <TextInput
                                 style={styles.input}
                                 placeholder='email address'
@@ -384,15 +502,16 @@ class NewGroup extends Component {
                         </View>
                     </View>
                 </View>
-                <TouchableOpacity
-                        style={{flexDirection: 'row', alignItems: 'center', alignSelf: 'center', height:60, display: this.state.isKeyboard == true ? 'none' : null}}
+                <View style={{flexDirection: 'row', alignItems: 'center', alignSelf: 'center', height:60, display: this.state.isKeyboard == true ? 'none' : null}}>
+                    <TouchableOpacity
+                        style={{flexDirection: 'row', alignItems: 'center', }}
                         onPress = {() => {
                             if(this.state.groupName == undefined)
                                 return;
                             this.setState({
                                 isUploading: true,
                             })
-                            //if(this.state.value == 'public') {
+                            if(this.props.navigation.state.params.isEdit != true) {
                                 firebaseApp.database().ref().child('groups').once('value', (snap, b) => {
                                     
                                     var isAlready = false;
@@ -411,14 +530,39 @@ class NewGroup extends Component {
                                     if(isAlready == false)
                                         this.createNewGroup();
                                 })
-                            //} else {
-                            //    this.createNewGroup();
-                            //}
-
+                            } else {
+                                this.createNewGroup();
+                            }
+                            
                         }}>
-                        <Image source={this.props.navigation.state.params.isEdit == true ? require('../images/update.png') : require('../images/newGroup.png')} style={{width: 24, height: 24, }}/>
-                        <Text style = {{fontSize: 22, backgroundColor: 'transparent', color: 'black', marginLeft: 10}}>{this.props.navigation.state.params.isEdit == true ? 'Update Group' : 'Create Group'}</Text>
+                        <Image source={this.props.navigation.state.params.isEdit == true ? require('../images/update.png') : require('../images/newGroup.png')} style={{width: 22, height: 22, }}/>
+                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 10}}>{this.props.navigation.state.params.isEdit == true ? 'Update Group' : 'Create Group'}</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                        style={{flexDirection: 'row', alignItems: 'center', display: (this.props.navigation.state.params.groupCreator == userId || this.props.navigation.state.params.isEdit != true) ? 'none' : null}}
+                        onPress = {() => {
+                            Alert.alert(
+                                'Confirm',
+                                'Leave this group?',
+                                [
+                                    {text: 'Yes', onPress: () => {
+                                        firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).child('privacy').on('value', (snap) =>{
+                                            snap.forEach((child) => {
+                                                if(child.val().userId == userId) {
+                                                    firebaseApp.database().ref('groups').child(this.props.navigation.state.params.groupKey).child('privacy').child(child.key).remove()
+                                                    this.props.navigation.goBack();
+                                                }
+                                            })
+                                        })
+                                    }},
+                                    {text: 'No',  },
+                                ],
+                                { cancelable: false }
+                            )
+                        }}>
+                        <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 20}}>Leave group</Text>
+                    </TouchableOpacity>
+                </View>
 			</View>
 		);
 	}

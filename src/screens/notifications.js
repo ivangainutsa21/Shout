@@ -64,6 +64,29 @@ class Notifications extends Component {
                                 userId
                             })
                             firebaseApp.database().ref('users').child(userId).child('pendingRequests').child(item.groupKey).remove()
+                            .then(() => {
+
+                                var pendingRequests = [];
+                                this.setState({
+                                    dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
+                                });
+                                var userId = firebaseApp.auth().currentUser.uid;
+                                firebaseApp.database().ref('users').child(userId).child('pendingRequests').on('value', (snap) => {
+                                    snap.forEach((notification) => {
+                                        pendingRequests.push({
+                                            groupKey: notification.key,
+                                            playerIds: notification.val().playerIds,
+                                            userName: notification.val().userName,
+                                            groupName: notification.val().groupName,
+                                        });
+                                    })
+
+                                    this.setState({
+                                        pendingRequests: pendingRequests,
+                                        dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
+                                    });
+                                })
+                            })
                         }} >
                         <Text style={{fontSize: 18, fontWeight: 'bold', paddingHorizontal: 10}}>Accept</Text>
                     </TouchableOpacity>
@@ -87,10 +110,11 @@ class Notifications extends Component {
                 <Spinner visible={this.state.isUploading} textContent={"Creating a group..."} textStyle={{color: '#FFF'}} />
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity
+						style={{height: 40, width: 40, alignItems: 'center', justifyContent: 'center'}}
 						onPress = {() => {
 							this.props.navigation.goBack();
 					    }}>
-						<Image source={require('../images/backbtn.png')} style={{height: 40, width: 40}}/>	
+						<Image source={require('../images/backbtn.png')} style={{height: 20, width: 20}}/>	
 					</TouchableOpacity>
 					<Text style = {{fontSize: 32, backgroundColor: 'transparent', color: 'black', }}>Group Requests</Text>
 				</View>
