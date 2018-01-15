@@ -22,10 +22,8 @@ import TitlePlayer			from './titlePlayer';
 class Post extends Component {
 	constructor(props) {
 		super(props);
-		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
 		
 		this.state = {
-			dataSource: ds.cloneWithRows(['row 1', 'row 2']),
 			shoutTitle: null,
 			userName: '',
 			isUploading: false,

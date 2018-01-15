@@ -5,11 +5,12 @@ import {
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import RadioForm, {RadioButton, RadioButtonInput, RadioButtonLabel} from 'react-native-simple-radio-button';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 import Spinner 		from 'react-native-loading-spinner-overlay';
 import { firebaseApp } 		from '../firebase'
 import { connect } from "react-redux";
+
+var userId;
 
 class Notifications extends Component {
 	constructor(props) {
@@ -17,7 +18,7 @@ class Notifications extends Component {
         const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
 
         this.state = {
-            dataSource: ds.cloneWithRows(['row 1', 'row 2']),
+            dataSource: ds.cloneWithRows([]),
             pendingRequests: [],
         }
         this.renderRow = this.renderRow.bind(this);
@@ -29,11 +30,9 @@ class Notifications extends Component {
 
 	componentDidMount() {
         var pendingRequests = [];
-        this.setState({
-            dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
-        });
-        var userId = firebaseApp.auth().currentUser.uid;
+        userId = firebaseApp.auth().currentUser.uid;
 		firebaseApp.database().ref('users').child(userId).child('pendingRequests').on('value', (snap) => {
+            var pendingRequests = [];
             snap.forEach((notification) => {
                 pendingRequests.push({
                     groupKey: notification.key,
@@ -64,29 +63,8 @@ class Notifications extends Component {
                                 userId
                             })
                             firebaseApp.database().ref('users').child(userId).child('pendingRequests').child(item.groupKey).remove()
-                            .then(() => {
-
-                                var pendingRequests = [];
-                                this.setState({
-                                    dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
-                                });
-                                var userId = firebaseApp.auth().currentUser.uid;
-                                firebaseApp.database().ref('users').child(userId).child('pendingRequests').on('value', (snap) => {
-                                    snap.forEach((notification) => {
-                                        pendingRequests.push({
-                                            groupKey: notification.key,
-                                            playerIds: notification.val().playerIds,
-                                            userName: notification.val().userName,
-                                            groupName: notification.val().groupName,
-                                        });
-                                    })
-
-                                    this.setState({
-                                        pendingRequests: pendingRequests,
-                                        dataSource: this.state.dataSource.cloneWithRows(pendingRequests)
-                                    });
-                                })
-                            })
+                            firebaseApp.database().ref('groups').child(item.groupKey).child('pending').child(userId).remove()
+                            
                         }} >
                         <Text style={{fontSize: 18, fontWeight: 'bold', paddingHorizontal: 10}}>Accept</Text>
                     </TouchableOpacity>
@@ -94,6 +72,7 @@ class Notifications extends Component {
                         onPress = {() => {
                             var userId = firebaseApp.auth().currentUser.uid;
                             firebaseApp.database().ref('users').child(userId).child('pendingRequests').child(item.groupKey).remove()
+                            firebaseApp.database().ref('groups').child(item.groupKey).child('pending').child(userId).remove()
                         }} >
                         <Text style={{fontSize: 18, fontWeight: 'bold', paddingHorizontal: 10}}>Reject</Text>
                     </TouchableOpacity>

@@ -23,6 +23,7 @@ class App extends Component<{}> {
 	componentWillMount() {
 		OneSignal.addEventListener('opened', this.onOpened);
 		OneSignal.addEventListener('ids', this.onIds);
+		OneSignal.inFocusDisplaying(2);
   	}
 
     componentWillUnmount() {
@@ -34,32 +35,12 @@ class App extends Component<{}> {
     }
 
     onOpened(openResult) {
-		setTimeout(() => {
+		//setTimeout(() => {
 			this.props.dispatch(save_nf(openResult.notification.payload.additionalData));
 			if(firebaseApp.auth().currentUser == null)
 				return;
-				/*
-			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_newShout') {	
-				let resetNewPost = NavigationActions.reset({
-					index: 1,
-					actions: [
-					NavigationActions.navigate({ routeName: 'homeGroup'}),
-					NavigationActions.navigate({ 
-						routeName: 'home', 
-						params:{
-								groupName: openResult.notification.payload.additionalData.groupName, 
-								groupKey: openResult.notification.payload.additionalData.groupKey,
-								groupCreator: openResult.notification.payload.additionalData.groupCreator,
-							}
-						}),
-					]
-				})
-				this.navigator && this.navigator.dispatch(resetNewPost);
-			} 
-			*/
-			console.log(openResult.notification.payload.additionalData);
+
 			if(openResult.notification.payload.additionalData != undefined && openResult.notification.payload.additionalData.nfType ==  'nf_gotoPost') {
-				console.log(openResult.notification.payload.additionalData.groupCreator);
 				let resetPost = NavigationActions.reset({
 					index: 2,
 					actions: [
@@ -72,7 +53,7 @@ class App extends Component<{}> {
 								groupCreator: openResult.notification.payload.additionalData.groupCreator,
 							}
 						}),
-					NavigationActions.navigate({ 
+					NavigationActions.navigate({
 							routeName: 'comment', 
 							params:{
 								postName:  openResult.notification.payload.additionalData.postName, 
@@ -102,7 +83,7 @@ class App extends Component<{}> {
 				})
 				this.navigator && this.navigator.dispatch(resetNotification);
 			}
-		}, 1000);
+		//}, 1000);
 	}
 
 	render() {

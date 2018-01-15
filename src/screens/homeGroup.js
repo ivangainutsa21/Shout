@@ -55,13 +55,11 @@ class HomeGroup extends Component {
             var promises = [];
             promises.push(new Promise((resolve, reject) => {
                 snap.forEach((child) => {
-                    let isGroup = false;
+                    let isMyPrivateGroup = false;
                     firebaseApp.database().ref().child('groups').child(child.key).child('privacy').on('value', (snap) => {
                         snap.forEach((child) => {
                             if(child.val().userId == userId)
-                            {
-                                isGroup = true;
-                            }
+                                isMyPrivateGroup = true;
                         })
                     })
                     
@@ -81,7 +79,7 @@ class HomeGroup extends Component {
                             groupCreator: child.val().groupCreator,
                         });
                     }
-                    if(isGroup == true) {
+                    if(isMyPrivateGroup == true) {
                         allGroups.push({
                             lastModified: child.val().lastModified,
                             groupKey: child.key,
@@ -138,7 +136,6 @@ class HomeGroup extends Component {
                     return 0;
                 });
 
-
                 domainsGroups.sort(function(a, b){
                     if(a.lastModified != undefined && b.lastModified == undefined) return -1;
                     if(a.lastModified == undefined && b.lastModified != undefined) return 1;
@@ -165,10 +162,8 @@ class HomeGroup extends Component {
         this.props.navigation.navigate('home', {groupName: item.groupName, groupKey: item.groupKey, groupCreator: item.groupCreator, refresh: item.refresh});
     }
 
-
 	render() {
         const { navigate } = this.props.navigation;
-        const abc = [];
         
 		return (
 			<View style={styles.container}>
@@ -297,7 +292,7 @@ class HomeGroup extends Component {
                     </View>
                     <GridComponent data={this.state.dataSource} onPress={this.onPressGridCell}>
                     </GridComponent>
-                    </View>
+                </View>
 			</View>
 		);
 	}

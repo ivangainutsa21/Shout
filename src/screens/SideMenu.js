@@ -70,17 +70,6 @@ export default class SideMenu extends Component {
                         }}>
                         <Text style = {{fontSize : 32, fontWeight: 'bold'}}>My Profile</Text>
                     </TouchableOpacity>
-					{/*
-                    <TouchableOpacity
-                        onPress = {() => {
-                            this.props.navigation.navigate('DrawerClose');
-                            setTimeout(() => {
-                                //navigate('settings');
-                            }, 200);
-                        }}>
-                        <Text style = {{fontSize : 32, fontWeight: 'bold'}}>Settings</Text>
-                    </TouchableOpacity>
-					*/}
 					<TouchableOpacity
                         onPress = {() => {
                             this.props.navigation.navigate('DrawerClose');

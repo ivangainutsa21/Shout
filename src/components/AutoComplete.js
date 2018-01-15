@@ -1,5 +1,6 @@
 import React from 'react';
 import { TextInput, FlatList, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { AutoGrowTextInput } from 'react-native-auto-grow-textinput';
 
 var curIndex = 0;
 class AutoComplete extends React.Component {
@@ -29,16 +30,9 @@ class AutoComplete extends React.Component {
     curIndex = index;
     if (index != -1) {
       if (index == 0 || text[index - 1] == ' ') {
-        const key = text.substring(index + 1);
-        // console.log(nextStr);
-        // const nextSpaceIndex = nextStr.indexOf(' ');
-        // console.log(nextSpaceIndex);
-        // if (nextSpaceIndex == -1) {
-        //   nextSpaceIndex = nextStr.length;
-        // }
-        // const key = nextStr.substring(0, nextSpaceIndex);
+        const key = text.substring(index + 1).toLowerCase();
         const listDataSource = this.users.filter((user) => {
-          if (user.startsWith(key)) {
+          if (user.toLowerCase().startsWith(key)) {
             return user;
           }
         })
@@ -85,7 +79,7 @@ class AutoComplete extends React.Component {
 			height
 		  }
     return (
-      <View style={{ justifyContent: 'center', alignSelf: 'center', zIndex: 10, marginBottom: -55}}>
+      <View style={{ justifyContent: 'center', alignSelf: 'center', zIndex: 10, marginBottom: -55,}}>
       {
           this.state.listVisible && 
           <View style={{ backgroundColor: '#F5FCFF', borderColor: 'grey', borderWidth: 1, height: 150 }}>
@@ -96,17 +90,10 @@ class AutoComplete extends React.Component {
             />
           </View>
         }
-        {/*
-        <TextInput
-          style={textStyle}
-          onChangeText={this._onChangeText}
-          value={this.state.text}
-        />*/
-        }
         {
           Platform.OS === 'ios' ?
             <AutoGrowTextInput //source={usernameImg}
-              style={[styles.input, newStyle]}
+              style={[styles.input, newStyle, style={paddingTop: 10}]}
               placeholder={'Write a comment...'/*this.props.recording*/}
               placeholderTextColor='grey'
               autoCapitalize={'none'}
@@ -117,6 +104,7 @@ class AutoComplete extends React.Component {
               underlineColorAndroid='transparent'
               onChangeText={this._onChangeText}
               value={this.state.text}
+              minHeight={40}
             />
           :
             <TextInput //source={usernameImg}
@@ -143,7 +131,8 @@ const styles = StyleSheet.create({
 		backgroundColor: 'silver',
 		paddingHorizontal:10,
 		fontSize: 16,
-		alignItems: 'center',
+    alignItems: 'center',
+    textAlignVertical: 'center',
 		color: 'black',
 		width: 220,
 		height: 40,

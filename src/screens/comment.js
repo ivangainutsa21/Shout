@@ -19,7 +19,6 @@ import { connect } 			from "react-redux";
 import { loggedIn, } 		from '../actions'
 import Spinner 				from 'react-native-loading-spinner-overlay';
 import Hyperlink 			from 'react-native-hyperlink'
-import { AutoGrowTextInput } from 'react-native-auto-grow-textinput';
 import AutoComplete 		from '../components/AutoComplete'
 import GestureRecognizer, {swipeDirections} from 'react-native-swipe-gestures';
 import ImagePicker 		from 'react-native-image-picker';
@@ -124,7 +123,6 @@ class Comment extends Component {
 		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('likeUsers').on('value', (snap) => {
             snap.forEach((child) => {
 				if(child.val().userId == firebaseApp.auth().currentUser.uid) {
-
 					this.setState({
 						likeAvaialbe: false,
 						isPlaying: false,
@@ -222,7 +220,6 @@ class Comment extends Component {
 	}
 	onUpload() {
 		this.setState({
-			//comment: '',
 			isUploading: true,
 		})
 	}
@@ -244,94 +241,6 @@ class Comment extends Component {
 						<Text style={{fontSize: 10, color: 'grey', marginLeft: 10}}>{item.commentTime}</Text>
 					</View>
 					<View style={{flexDirection: 'row'}}>
-						<View style={{width:  100, height: item.userId == userId ? 60 : 30, zIndex: 10, backgroundColor: 'lightgrey', display: this.state.showCommentMenu == rowId ? null : 'none', marginBottom: -60, paddingHorizontal: 10, justifyContent: 'center'}}>
-							<TouchableOpacity style={{width: 80, height: 25, flexDirection: 'row', alignItems: 'center', borderBottomColor: 'black', borderBottomWidth: 1, display: item.userId == userId ? null : 'none'}}
-								onPress = {() => {
-									Alert.alert(
-										'Confirm',
-										'Delete this post?',
-										[
-											{text: 'Yes', onPress: () => {
-												
-												if(item.commentPhoto != undefined)
-													firebaseApp.storage().ref('comment').child(item.commentFile).delete()
-												if(item.recordName != undefined)
-													firebaseApp.storage().ref('records').child(item.recordName).delete()
-                    							firebaseApp.database().ref('posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('commentUsers').child(item.key).remove();
-											}},
-											{text: 'No',  },
-										],
-										{ cancelable: false }
-									)
-								}}>
-								<ImageBackground source={require('../images/dustbin.png')} style={{ height: 24, width: 24}}/>
-								<Text style={{marginLeft: 10}}>Delete</Text>
-							</TouchableOpacity>
-
-							
-							<TouchableOpacity style={{width: 80, height: 25, flexDirection: 'row', alignItems: 'center', }}
-								onPress = {() => {
-									this.setState({isUploading: true});
-									RNFetchBlob.fetch('GET', item.commentPhoto).then((res) => {
-										this.setState({
-											isUploading: false,
-											showCommentMenu: undefined,
-										});
-										let shareOptions = {
-											title: "Shared by Shout",
-											message: item.comment + '\n',
-											url: 'data:image/png;base64,' + res.base64(),
-											subject: "Shared by Shout" //  for email
-										};
-										Share.open(shareOptions);
-									})
-									/*
-									if(item.commentTitle != undefined) {
-										RNFetchBlob.fetch('GET', item.comment).then((res) => {
-											this.setState({
-												isUploading: false,
-												showCommentMenu: undefined,
-											});
-											let shareOptions = {
-												title: "Shared by Shout",
-												message: item.commentTitle + '\n',
-												url: 'data:audio/aac;base64,' + res.base64(),
-												subject: "Shared by Shout" //  for email
-											};
-											Share.open(shareOptions);
-										})
-									} else if(item.commentPhoto != undefined) {
-										RNFetchBlob.fetch('GET', item.commentPhoto).then((res) => {
-											this.setState({
-												isUploading: false,
-												showCommentMenu: undefined,
-											});
-											let shareOptions = {
-												title: "Shared by Shout",
-												message: item.comment + '\n',
-												url: 'data:image/png;base64,' + res.base64(),
-												subject: "Shared by Shout" //  for email
-											};
-											Share.open(shareOptions);
-										})
-									} else {
-										this.setState({
-											isUploading: false,
-											showCommentMenu: undefined,
-										});
-										let shareOptions = {
-											title: "Shared by Shout",
-											message: item.comment,
-											//url: 'data:audio/aac;base64,' + res.base64(),
-											subject: "Shared by Shout" //  for email
-										};
-										Share.open(shareOptions);
-									}*/
-								}}>
-								<ImageBackground source={require('../images/_share.png')} style={{ height: 22, width: 22}}/>
-								<Text style={{marginLeft: 10}}>Share</Text>
-							</TouchableOpacity>
-						</View>
 						<Menu>
 							<MenuTrigger style={{width: 24, }}>
 								<ImageBackground source={require('../images/more.png')} style={{height: 24, width: 8, }}/>
@@ -353,7 +262,7 @@ class Comment extends Component {
 												}},
 												{text: 'No',  },
 											],
-											{ cancelable: false }
+											{ cancelable: true }
 										)
 									}} >
 									<ImageBackground source={require('../images/dustbin.png')} style={{ height: 24, width: 24}}/>
@@ -457,23 +366,12 @@ class Comment extends Component {
 									<Text style= {{marginLeft: 10, textDecorationLine: locked == true ? 'line-through' : 'none'}}>Share</Text>
 								</MenuOption>
 							</MenuOptions>
-							</Menu>
-							{/*
-						<TouchableOpacity style={{marginTop: 5, width: 24, alignItems: 'center'}}
-							onPress = {() => {
-								if(this.state.showCommentMenu == rowId)
-									this.setState({showCommentMenu : undefined});
-								else
-									this.setState({showCommentMenu : rowId});
-							}}>
-							<ImageBackground source={require('../images/more.png')} style={{height: 24, width: 8, }}/>
-						</TouchableOpacity>
-						*/}
+						</Menu>
 					</View>
 				</View>
 				{
 					item.recordName ?
-						<View style={{justifyContent:'flex-start',marginBottom: 5}}>
+						<View style={{justifyContent:'flex-start', marginVertical: 5}}>
 							<Text style={{marginLeft: 30}}>{item.commentTitle != undefined ? '# ' + item.commentTitle : item.commentTitle}</Text>
 							<TouchableOpacity style = {{paddingHorizontal: 30, height: 100, display: item.commentPhoto == undefined ? 'none' : null}}
 								onPress = {() => {
@@ -496,7 +394,7 @@ class Comment extends Component {
 								}}>
 								<Image source={{uri: item.commentPhoto}} style={{flex: 1, }}/>
 							</TouchableOpacity>
-							<View style={{flexDirection: 'row', justifyContent:'center', alignItems:'center',marginBottom: 5}}>
+							<View style={{flexDirection: 'row', justifyContent:'center', alignItems:'center',marginTop: 5}}>
 								{
 									rowId == this.state.playingRow ?
 										<Text style={{fontSize: 16, color: 'black',}}>{(this.state.isPlaying == true) ? 'Stop' : 'Play'}</Text>
@@ -530,7 +428,7 @@ class Comment extends Component {
 							</View>
 						</View>
 					:
-						<Hyperlink linkStyle={ { color: '#2980b9', fontSize: 16 } } onPress={ url => Linking.openURL(url) }>
+						<Hyperlink linkStyle={ { color: '#2980b9', fontSize: 16 ,} } onPress={ url => Linking.openURL(url) }>
 							<Text style={{fontSize: 12, color: 'black', marginLeft: 10}}>{item.comment}</Text>
 							<TouchableOpacity style = {{paddingHorizontal: 30, height: 100, display: item.commentPhoto == undefined ? 'none' : null, marginBottom: 5}}
 								onPress = {() => {
@@ -635,6 +533,7 @@ class Comment extends Component {
 				config={config}
 				onSwipeRight={() => this.onSwipeRight()}
 			>
+			{/*<KeyboardAvoidingView behavior='padding' style={{flex: 1,}}>*/}
 				<Spinner visible={this.state.isUploading} textContent={"Uploading..."} textStyle={{color: '#FFF'}} />
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, marginHorizontal: 20}} >
 					<TouchableOpacity
@@ -875,12 +774,6 @@ class Comment extends Component {
 						}}>
 						<ImageBackground source={require('../images/photo-camera.png')} style={{height: 32, width: 32, }}/>
 					</TouchableOpacity>
-					{
-						/*
-						this.state.allUsers.length != 0 &&
-						<AutoComplete style={[styles.input,]} users={this.state.allUsers} onChangeText={this._onChangeText} value={this.state.comment}/>
-						*/
-					}
 					<AudioPlayer
 						onUpload = {this.onUpload}
 						onComment = {this.onComment}
@@ -905,6 +798,7 @@ class Comment extends Component {
 					isVisible={this.state.isVisible}
 					onClose={this.onImageClose}
 				/>
+				{/*</KeyboardAvoidingView>*/}
 			</GestureRecognizer>
 		);
 	}

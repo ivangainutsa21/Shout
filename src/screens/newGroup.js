@@ -5,7 +5,6 @@ import {
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import RadioForm, {RadioButton, RadioButtonInput, RadioButtonLabel} from 'react-native-simple-radio-button';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 
 import Spinner 		from 'react-native-loading-spinner-overlay';
 import { firebaseApp } 		from '../firebase'
@@ -17,8 +16,9 @@ class NewGroup extends Component {
         const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
 
         this.state = {
-            dataSource: ds.cloneWithRows(['row 1', 'row 2']),
-            allMembers: ds.cloneWithRows(['row 1', 'row 2']),
+            dataSource: ds.cloneWithRows([]),
+            dsAllMembers: ds.cloneWithRows([]),
+            allMembers: [],
             privacy: [{label: 'Public', value: 'public'}, {label: 'Private', value: 'private'}, {label: 'Domain', value: 'domain'}],
             value: this.props.navigation.state.params.privacy,
             valueIndex: this.props.navigation.state.params.privacy == 'public' ? 0 : 1,
@@ -68,7 +68,6 @@ class NewGroup extends Component {
                     email: child.val().email,
                     name: child.val().FullName,
                     userId: child.key,
-                    //invitatedUsers: [],
                 })
                 var email = child.val().email;
                 if(email != undefined && email.slice(email.indexOf('@')) == domain){
@@ -76,7 +75,6 @@ class NewGroup extends Component {
                         email: child.val().email,
                         name: child.val().FullName,
                         userId: child.key,
-                       // invitatedUsers: [],
                     })
                 }
             })
@@ -89,32 +87,34 @@ class NewGroup extends Component {
                 dataSource: this.state.dataSource.cloneWithRows(allEmails)
             });
         })
-        var allMembers = [];
-        this.setState({
-            allMembers: this.state.allMembers.cloneWithRows(allMembers)
-        });
         if(this.props.navigation.state.params.isEdit == true)
         {
-            firebaseApp.database().ref('groups/').child(this.props.navigation.state.params.groupKey).child('privacy').on('value', (snap) => {
-                var allMembers = [];
+            firebaseApp.database().ref('groups/').child(this.props.navigation.state.params.groupKey).child('privacy').once('value', (snap) => {
                 var promises = [];
+                var allMembers = [];
                 snap.forEach((child) =>{
                     promises.push(new Promise((resolve, reject) => {
                         firebaseApp.database().ref('users/').child(child.val().userId).on('value', (snap) => {
                             allMembers.push({
-                                fullName: snap.val().FullName,
+                                member: snap.val().FullName + ' is a member',
                             })
                             resolve();
                         })
                     }))
                 })
                 Promise.all(promises).then(() => {
-                    this.setState({
-                        allMembers: this.state.allMembers.cloneWithRows(allMembers)
-                    });
+                    firebaseApp.database().ref('groups/').child(this.props.navigation.state.params.groupKey).child('pending').once('value', (snap) => {
+                        snap.forEach((child) =>{
+                            allMembers.push({
+                                member: child.val().name + ' is pending',
+                            })
+                        })
+                        this.setState({
+                            allMembers,
+                            dsAllMembers: this.state.dsAllMembers.cloneWithRows(allMembers)
+                        });
+                    })
                 })
-
-                console.log(this.state.allMembers);
             })
         }
 	}
@@ -153,13 +153,16 @@ class NewGroup extends Component {
 
             this.state.invitatedUsers.forEach((invitatedUser) => {
                 promises.push(new Promise((resolve, reject) => {
-                    firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(this.props.navigation.state.params.groupKey).update({
+                    firebaseApp.database().ref().child('groups').child(this.props.navigation.state.params.groupKey).child('pending').child(invitatedUser.userId).set({
+                        name: invitatedUser.name
+                    })
+                    firebaseApp.database().ref().child('users').child(invitatedUser.userId).child('pendingRequests').child(this.props.navigation.state.params.groupKey).update({
                         groupName: this.state.groupName,
                         playerIds: this.props.playerIds,
                         userName: this.props.fullName,
                     })
                     .then(() => {
-                        firebaseApp.database().ref().child('users').child(invitatedUser).child('playerIds').on(('value'), (snap) => {
+                        firebaseApp.database().ref().child('users').child(invitatedUser.userId).child('playerIds').on(('value'), (snap) => {
                             fetch('https://onesignal.com/api/v1/notifications', {  
                                 method: 'POST',
                                 headers: {
@@ -240,13 +243,16 @@ class NewGroup extends Component {
                     userId
                 });
                 this.state.invitatedUsers.forEach((invitatedUser) => {
-                    firebaseApp.database().ref().child('users').child(invitatedUser).child('pendingRequests').child(groupName).update({
+                    firebaseApp.database().ref().child('groups').child(groupName).child('pending').child(invitatedUser.userId).set({
+                        name: invitatedUser.name
+                    })
+                    firebaseApp.database().ref().child('users').child(invitatedUser.userId).child('pendingRequests').child(groupName).update({
                         groupName: this.state.groupName,
                         playerIds: this.props.playerIds,
                         userName: this.props.fullName,
                     })
                     .then(() => {
-                        firebaseApp.database().ref().child('users').child(invitatedUser).child('playerIds').once(('value'), (snap) => {
+                        firebaseApp.database().ref().child('users').child(invitatedUser.userId).child('playerIds').once(('value'), (snap) => {
                             fetch('https://onesignal.com/api/v1/notifications', {  
                                 method: 'POST',
                                 headers: {
@@ -341,8 +347,16 @@ class NewGroup extends Component {
                         [
                             {text: 'Yes', onPress: () => {
                                 this.setState({
-                                    invitatedUsers: [...this.state.invitatedUsers, item.userId],
+                                    invitatedUsers: [...this.state.invitatedUsers, { userId: item.userId, name: item.name}],
                                 })
+                                var allMembers = [...this.state.allMembers];
+                                allMembers.push({
+                                    member: 'Invite ' + item.name,
+                                })
+                                this.setState({
+                                    allMembers,
+                                    dsAllMembers: this.state.dsAllMembers.cloneWithRows(allMembers)
+                                });
                             }},
                             {text: 'No',  },
                         ],
@@ -351,7 +365,6 @@ class NewGroup extends Component {
                     )
 
                 }}>
-                {/*<Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>*/}
                 <Text style={{fontSize: 14}}>{item.name }</Text>
                 </TouchableOpacity>
         </View>
@@ -368,8 +381,7 @@ class NewGroup extends Component {
                        
                     }}
                 >
-                {/*<Image source={require('../images/addgroup.png')} style={{height: 100, width: 200, }}/>*/}
-                <Text style={{fontSize: 14}}>{item.fullName} is a member</Text>
+                <Text style={{fontSize: 14}}>{item.member}</Text>
                 </TouchableOpacity>
         </View>
         );
@@ -379,9 +391,10 @@ class NewGroup extends Component {
         const userId = firebaseApp.auth().currentUser.uid;
         
 		return (
-			<View style={[styles.container, style = {marginHorizontal: 5,}]}>
+			<View style={styles.container}>
                 <Spinner visible={this.state.isUploading} textContent={"Creating a group..."} textStyle={{color: '#FFF'}} />
-				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20}} >
+
+				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems:'center', marginTop: 5, marginHorizontal: 20, display: this.state.isKeyboard == true ? 'none' : null}} >
 					<TouchableOpacity
 						style={{height: 40, width: 40, alignItems: 'center', justifyContent: 'center'}}
 						onPress = {() => {
@@ -461,13 +474,13 @@ class NewGroup extends Component {
                         })}
                         </RadioForm>
                     </View>
-                <View style={{flex: 0.7, marginTop: 10, }}>
+                <View style={{flex: 0.7, marginTop: 10, display: this.state.isKeyboard == true ? 'none' : null}}>
                     <View style={{flex: 1, display: this.state.value == 'private' ? null: 'none'}}>
                         <Text style = {styles.text}>Members</Text>
                         <View style={{flex: 1, marginHorizontal: 20, marginTop: 10, borderColor: 'black', borderWidth: 1, borderRadius: 10}}>
                             <ListView
                                 style = {{flex: 1}}
-                                dataSource={this.state.allMembers}
+                                dataSource={this.state.dsAllMembers}
                                 renderRow={this.renderMember}
                                 enableEmptySections={true}
                             />
@@ -478,9 +491,10 @@ class NewGroup extends Component {
                     <View style={{flex: 1, display: this.state.value == 'private' ? null: 'none'}}>
                         <Text style = {styles.text}>Adding Users</Text>
                         <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 20, marginTop: 10}}>Invite Users</Text>
+
                         <View style={{flexDirection: 'row', marginTop: 10, marginHorizontal: 20, alignItems: 'center'}}>
                             <TextInput
-                                style={styles.input}
+                                style={[styles.input, style={height: 40}]}
                                 placeholder='email address'
                                 autoCapitalize={'none'}
                                 returnKeyType={'done'}
@@ -492,6 +506,7 @@ class NewGroup extends Component {
                             </TextInput>
                             <Image source={require('../images/search.png')} style={{width: 24, height: 24, marginLeft: -32, marginRight: 8}}/>
                         </View>
+
                         <View style={{flex: 1, marginHorizontal: 20, borderColor: 'black', borderWidth: 1, borderRadius: 10}}>
                             <ListView
                                 style = {{flex: 1}}

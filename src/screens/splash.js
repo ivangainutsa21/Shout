@@ -50,23 +50,7 @@ class Splash extends Component {
 					})
 					this.props.dispatch(getFullName(snapshot.val()));
 					
-					/*if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_newShout') {	
-						let resetNewPost = NavigationActions.reset({
-							index: 1,
-							actions: [
-							  NavigationActions.navigate({ routeName: 'homeGroup'}),
-							  NavigationActions.navigate({ 
-								routeName: 'home', 
-								params:{
-										groupName: this.props.nf_payload.groupName, 
-										groupKey: this.props.nf_payload.groupKey,
-										groupCreator: this.props.nf_payload.groupCreator,
-									}
-								}),
-							]
-						})
-						this.props.navigation.dispatch(resetNewPost);
-					} else */if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_gotoPost') {
+					if(this.props.nf_payload != undefined && this.props.nf_payload.nfType ==  'nf_gotoPost') {
 						let resetPost = NavigationActions.reset({
 							index: 2,
 							actions: [
