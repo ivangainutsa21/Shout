@@ -14,10 +14,9 @@ export default class ReduxApp extends Component {
     render(){
         return(
             <Provider store={store}>
-            
-            <MenuProvider>
-                <App />
-  </MenuProvider>
+                <MenuProvider>
+                    <App />
+                </MenuProvider>
             </Provider>
         );
     }

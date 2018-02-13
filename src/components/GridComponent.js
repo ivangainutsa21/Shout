@@ -47,7 +47,7 @@ class GridComponent extends Component {
     var groups = this.groupItems(this.props.data, 3);
     var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
     return (
-      <View style={{ backgroundColor: 'transparent' }}>
+      <View style={{ backgroundColor: 'transparent',  }}>
         <ListView
           renderRow={this.renderGroup}
           dataSource={ds.cloneWithRows(groups)}

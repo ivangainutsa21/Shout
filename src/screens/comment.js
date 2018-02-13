@@ -3,7 +3,7 @@ import Dimensions from 'Dimensions';
 import {
 	StyleSheet, TextInput, View,TouchableOpacity, Text, ImageBackground, Image, 
 	Platform, PermissionsAndroid, ToastAndroid, Alert, Keyboard,DeviceEventEmitter, AlertAndroid, Linking, 
-	KeyboardAvoidingView, FlatList,
+	KeyboardAvoidingView, FlatList,ListView
 } from 'react-native';
 import { NavigationActions } from 'react-navigation';
 import ImageView 			from 'react-native-image-view';
@@ -29,15 +29,17 @@ import {
   MenuOption,
   MenuTrigger,
 } from 'react-native-popup-menu';
+import { Manager } from 'react-native-root-modal';
 
 class Comment extends Component {
 	constructor(props) {
 		super(props);
-
+		const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+		
 		this.state = {
 			likeAvaialbe: true,
 			comment: '',
-			dataSource: [],
+			dataSource: ds.cloneWithRows([]),
 			isPlaying: false,
 			playingRow: undefined,
 			isVisible: false,
@@ -55,12 +57,14 @@ class Comment extends Component {
 			thumbnail: null,
 			focusedImage: null,
 			showCommentMenu: undefined,
+			widthOfComment: DEVICE_WIDTH - 150,
 		}
 		this.renderRow = this.renderRow.bind(this);
 		this.onImageClose = this.onImageClose.bind(this);
 		this.onUpload = this.onUpload.bind(this);
 		this.onComment = this.onComment.bind(this);
-		//this.onChangeComment = this.onChangeComment.bind(this);
+		this.onChangeWidth = this.onChangeWidth.bind(this);
+		this.recordingVoice = this.recordingVoice.bind(this);
 		this.subscription = DeviceEventEmitter.addListener('RNAudioStreamerStatusChanged',this._statusChanged.bind(this));
 	}
 
@@ -100,9 +104,7 @@ class Comment extends Component {
 		}
 
 	}
-
 	componentDidMount() {
-		
 		var allRecords = [];
 		firebaseApp.database().ref('/posts/').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('commentUsers').on('value', (snap) => {
 			snap.forEach((child) => {
@@ -147,8 +149,9 @@ class Comment extends Component {
 				});
             });
             this.setState({
-                dataSource: workshops
-            });
+                dataSource: this.state.dataSource.cloneWithRows(workshops)
+			});
+			
 		});
 		firebaseApp.database().ref('/users').on('value', (snap) => {
 			var allUsers = [];
@@ -173,9 +176,24 @@ class Comment extends Component {
 			isVisible: false,
 		})
 	}
+
+	recordingVoice(currentTime) {
+		if(typeof(currentTime) == 'number') {
+			let min10 = Math.floor(currentTime / 600);
+			let min1 = Math.floor((currentTime / 60) % 10);
+			let sec10 = Math.floor((currentTime % 60) / 10);
+			let sec1 = Math.floor((currentTime % 60) % 10);
+			this.setState({
+				comment: min10 + '' + min1 + ':' + sec10 + '' + sec1 + '   < Slide to cancel',
+			})
+		} else if(typeof(currentTime) == 'string') {
+			this.setState({
+				comment: currentTime
+			})
+
+		}
+	}
 	onComment() {
-		
-		console.log(this.state.comment);
 		var addedUsers = [];
 		for (var i = 0; i < this.state.allUsers.length; i++) {
 			let key = "@" + this.state.allUsers[i].name;
@@ -203,7 +221,7 @@ class Comment extends Component {
 					'shoutTitle': this.props.shoutTitle, 
 					'userName': this.props.userName, 
 					'date': this.props.date, 
-					'voiceTitle': this.props.voiceTitle, 
+					'voiceTitle': this.props.voiceTitle,
 					'groupName': this.props.groupName,
 					'groupKey': this.props.groupKey,
 					'groupCreator': this.props.groupCreator,
@@ -223,10 +241,14 @@ class Comment extends Component {
 			isUploading: true,
 		})
 	}
-	
-	renderRow(row){
-        let item = row.item;
-		let rowId = row.index;
+	onChangeWidth(width) {
+		this.setState({
+			widthOfComment: width,
+		})
+	}
+	renderRow(item, sectionId, rowId){
+        //let item = row.item;
+		//let rowId = row.index;
 		var userId = firebaseApp.auth().currentUser.uid;
 		var locked;
 		firebaseApp.database().ref('posts').child(this.props.navigation.state.params.groupName).child(this.props.navigation.state.params.postName).child('commentUsers').child(item.key).on('value', (snap) =>{
@@ -380,15 +402,15 @@ class Comment extends Component {
 									})
 									Image.getSize(this.state.focusedImage, (width, height) => {
 										this.setState({
-											isVisible: true,
 											imageWidth: 250,
 											imageHeight: 250 * height / width,
+											isVisible: true,
 										})
 									}, (error) => {
 										this.setState({
-											isVisible: true,
 											imageWidth: 250,
-											imageHeight: 250
+											imageHeight: 250,
+											isVisible: true,
 										})
 									});
 								}}>
@@ -437,15 +459,15 @@ class Comment extends Component {
 									})
 									Image.getSize(this.state.focusedImage, (width, height) => {
 										this.setState({
-											isVisible: true,
 											imageWidth: 250,
 											imageHeight: 250 * height / width,
+											isVisible: true,
 										})
 									}, (error) => {
 										this.setState({
-											isVisible: true,
 											imageWidth: 250,
-											imageHeight: 250
+											imageHeight: 250,
+											isVisible: true,
 										})
 									});
 								}}>
@@ -528,11 +550,13 @@ class Comment extends Component {
 			}
 		};
 		return (
+			/*
 			<GestureRecognizer 
 				style={styles.container}
 				config={config}
 				onSwipeRight={() => this.onSwipeRight()}
-			>
+			>*/
+			<SmartView style={styles.container}>
 			{/*<KeyboardAvoidingView behavior='padding' style={{flex: 1,}}>*/}
 				<Spinner visible={this.state.isUploading} textContent={"Uploading..."} textStyle={{color: '#FFF'}} />
 				<View style={{height: 60, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 5, marginHorizontal: 20}} >
@@ -708,15 +732,15 @@ class Comment extends Component {
 								})
 								Image.getSize(this.state.focusedImage, (width, height) => {
 									this.setState({
-										isVisible: true,
 										imageWidth: 250,
 										imageHeight: 250 * height / width,
+										isVisible: true,
 									})
 								}, (error) => {
 									this.setState({
-										isVisible: true,
 										imageWidth: 250,
-										imageHeight: 250
+										imageHeight: 250,
+										isVisible: true,
 									})
 								});
 							} else {
@@ -727,17 +751,22 @@ class Comment extends Component {
 					</TouchableOpacity>
 				</View>
 				<View style = {{flex: 1, marginTop: 10, zIndex: 0}}>
+					{/*
 					<FlatList
 						data={this.state.dataSource}
 						renderItem={this.renderRow}
 						extraData={this.state}
 						keyExtractor={item => item.postName}
 					/>
+					*/
+					}
+					<ListView
+						dataSource={this.state.dataSource}
+						renderRow={this.renderRow}
+					/>
+					
 				</View>
-				{
-					this.state.allUsers.length != 0 &&
-						<AutoComplete style={{}} users={this.state.allUsers} onChangeText={this._onChangeText} value={this.state.comment}/>
-				}
+				<AutoComplete style={{}} onChangeText={this._onChangeText} value={this.state.comment} width={this.state.widthOfComment} groupKey={this.props.navigation.state.params.groupKey}/>
 				<View style={{height:60, flexDirection: 'row', alignItems: 'center', justifyContent:'space-between', marginTop: 5, backgroundColor: 'lightgrey', paddingHorizontal: 15, zIndex: 0}}>
 					<TouchableOpacity style={{}}
 						onPress = {() => {
@@ -774,7 +803,10 @@ class Comment extends Component {
 						}}>
 						<ImageBackground source={require('../images/photo-camera.png')} style={{height: 32, width: 32, }}/>
 					</TouchableOpacity>
+					<View >
 					<AudioPlayer
+						recordingVoice = {this.recordingVoice}
+						onChangeWidth = {this.onChangeWidth}
 						onUpload = {this.onUpload}
 						onComment = {this.onComment}
 						thumbnail = {this.state.thumbnail}
@@ -790,6 +822,7 @@ class Comment extends Component {
 						lastModified = { this.props.navigation.state.params.lastModified }
 						comment = {this.state.comment}
 						myName = {this.props.fullName}/>
+					</View>
 				</View>
 				<ImageView
 					source={{uri: this.state.focusedImage}}
@@ -799,10 +832,15 @@ class Comment extends Component {
 					onClose={this.onImageClose}
 				/>
 				{/*</KeyboardAvoidingView>*/}
-			</GestureRecognizer>
+			</SmartView>
+			//</GestureRecognizer>
 		);
 	}
 }
+
+
+const DEVICE_WIDTH = Dimensions.get('window').width;
+const DEVICE_HEIGHT = Dimensions.get('window').height;
 
 const styles = StyleSheet.create({
 	container: {
@@ -826,6 +864,8 @@ const styles = StyleSheet.create({
 		width: 40,
 	},
 });
+
+const SmartView = Platform.OS === 'ios' ? KeyboardAvoidingView : View
 
 function mapStateToProps(state) {
 	return {

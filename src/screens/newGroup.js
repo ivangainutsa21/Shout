@@ -9,6 +9,7 @@ import RadioForm, {RadioButton, RadioButtonInput, RadioButtonLabel} from 'react-
 import Spinner 		from 'react-native-loading-spinner-overlay';
 import { firebaseApp } 		from '../firebase'
 import { connect } from "react-redux";
+import Contacts from 'react-native-contacts';
 
 class NewGroup extends Component {
 	constructor(props) {
@@ -19,8 +20,8 @@ class NewGroup extends Component {
             dataSource: ds.cloneWithRows([]),
             dsAllMembers: ds.cloneWithRows([]),
             allMembers: [],
-            privacy: [{label: 'Public', value: 'public'}, {label: 'Private', value: 'private'}, {label: 'Domain', value: 'domain'}],
-            value: this.props.navigation.state.params.privacy,
+            privacy: [/*{label: 'Public', value: 'public'}, */{label: 'Private', value: 'private'}, {label: 'Domain', value: 'domain'}],
+            value: /*this.props.navigation.state.params.privacy*/'private',
             valueIndex: this.props.navigation.state.params.privacy == 'public' ? 0 : 1,
             groupName: this.props.navigation.state.params.groupName,
             isUploading: false,
@@ -41,51 +42,71 @@ class NewGroup extends Component {
 		header: null
 	};
 
-    componentWillMount () {
-        this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this.keyboardDidShow);
-        this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this.keyboardDidHide);
-      }
-      componentWillUnmount () {
+    componentWillUnmount () {
         this.keyboardDidShowListener.remove();
         this.keyboardDidHideListener.remove();
-      }
-      keyboardDidShow  = ()=> {
+    }
+    keyboardDidShow  = ()=> {
         this.setState({isKeyboard: true})
-      }
+    }
     
     keyboardDidHide = () => {
         this.setState({isKeyboard: false})
     }
-	componentDidMount() {
-        var allEmails = [];
-        var allDomains = [];
-        var myEmail = firebaseApp.auth().currentUser.email;
-        var domain = myEmail.slice(myEmail.indexOf('@'));
-        this.setState({domain});
-        firebaseApp.database().ref('users/').on('value', (snap) => {
-            snap.forEach((child) => {
-                allEmails.push({
-                    email: child.val().email,
-                    name: child.val().FullName,
-                    userId: child.key,
-                })
-                var email = child.val().email;
-                if(email != undefined && email.slice(email.indexOf('@')) == domain){
-                    allDomains.push({
-                        email: child.val().email,
-                        name: child.val().FullName,
-                        userId: child.key,
+
+	componentWillMount() {
+        firebaseApp.database().ref('users').on('value', (snap) => {
+            var allEmails = [];
+            var allDomains = [];
+            var phoneContacts = [];
+            Contacts.getAll((err, contacts) => {
+                if(err === 'denied'){
+                    // error
+                } else {
+                    contacts.forEach(contact => {
+                    contact.emailAddresses.forEach(email => {
+                        phoneContacts.push(email.email);
+                    })
+                    });
+                    var myEmail = firebaseApp.auth().currentUser.email;
+                    var domain = myEmail.slice(myEmail.indexOf('@'));
+                    this.setState({domain});
+
+                    snap.forEach((child) => {
+                        allEmails.push({
+                            email: child.val().email,
+                            name: child.val().FullName,
+                            userId: child.key,
+                        })
+                        /*
+                        phoneContacts.forEach(contact => {
+                            if(child.val().email == contact){
+                                allEmails.push({
+                                    email: child.val().email,
+                                    name: child.val().FullName,
+                                    userId: child.key,
+                                })
+                            }
+                        })
+                        */
+                        var email = child.val().email;
+                        if(email != undefined && email.slice(email.indexOf('@')) == domain){
+                            allDomains.push({
+                                email: child.val().email,
+                                name: child.val().FullName,
+                                userId: child.key,
+                            })
+                        }
+                    })
+
+                    this.setState({
+                        allEmails: allEmails,
+                        allDomains: allDomains,
+                        dataSource: this.state.dataSource.cloneWithRows(allEmails)
+                    
                     })
                 }
             })
-            this.setState({
-                allEmails: allEmails,
-                allDomains: allDomains,
-            })
-
-            this.setState({
-                dataSource: this.state.dataSource.cloneWithRows(allEmails)
-            });
         })
         if(this.props.navigation.state.params.isEdit == true)
         {
@@ -117,6 +138,9 @@ class NewGroup extends Component {
                 })
             })
         }
+
+        this.keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', this.keyboardDidShow);
+        this.keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', this.keyboardDidHide);
 	}
 
 	addZero = (i) =>{
@@ -343,7 +367,7 @@ class NewGroup extends Component {
                     onPress = {() => {
                         Alert.alert(
                         'Confirm',
-                        'Are you sure you want to Inviate ' + item.name + '(' + item.email + ')' + 'to this group',
+                        'Are you sure you want to invite ' + item.name + '(' + item.email + ')' + 'to this group?',
                         [
                             {text: 'Yes', onPress: () => {
                                 this.setState({
@@ -487,7 +511,7 @@ class NewGroup extends Component {
                         </View>
                     </View>
                 </View>
-                <View style={{flex: 1, marginTop: 10,}}>
+                <View style={{flex: 1, marginTop: 10, display: (this.props.navigation.state.params.groupCreator != userId && this.props.navigation.state.params.isEdit == true) ? 'none' : null}}>
                     <View style={{flex: 1, display: this.state.value == 'private' ? null: 'none'}}>
                         <Text style = {styles.text}>Adding Users</Text>
                         <Text style = {{fontSize: 18, backgroundColor: 'transparent', color: 'black', marginLeft: 20, marginTop: 10}}>Invite Users</Text>
@@ -519,7 +543,7 @@ class NewGroup extends Component {
                 </View>
                 <View style={{flexDirection: 'row', alignItems: 'center', alignSelf: 'center', height:60, display: this.state.isKeyboard == true ? 'none' : null}}>
                     <TouchableOpacity
-                        style={{flexDirection: 'row', alignItems: 'center', }}
+                        style={{flexDirection: 'row', alignItems: 'center', display: (this.props.navigation.state.params.groupCreator != userId && this.props.navigation.state.params.isEdit == true) ? 'none' : null}}
                         onPress = {() => {
                             if(this.state.groupName == undefined)
                                 return;

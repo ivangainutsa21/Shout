@@ -28,40 +28,45 @@ homeDrawer.navigationOptions = {
 	header: null,
 }
 
-const RootNavigator = StackNavigator({
-	splash: {
-		screen: Splash,
+const RootNavigator = StackNavigator(
+	{
+		splash: {
+			screen: Splash,
+		},
+		login: {
+			screen: Login,
+		},
+		signup: {
+			screen: Signup, 
+		},
+		home: {
+			screen: Home,
+		},
+		userProfile: {
+			screen: UserProfile,
+		},
+		settings: {
+			screen: Settings,
+		},
+		comment: {
+			screen: Comment,
+		},
+		homeGroup: {
+			screen: homeDrawer,
+		},
+		post: {
+			screen: Post, 
+		},
+		newGroup: {
+			screen: NewGroup,
+		},
+		notifications: {
+			screen: Notifications,
+		},
 	},
-	login: {
-		screen: Login,
-	},
-	signup: {
-		screen: Signup, 
-	},
-	home: {
-		screen: Home,
-	},
-	userProfile: {
-		screen: UserProfile,
-	},
-	settings: {
-		screen: Settings,
-	},
-	comment: {
-		screen: Comment,
-	},
-	homeGroup: {
-		screen: homeDrawer,
-	},
-	post: {
-		screen: Post, 
-	},
-	newGroup: {
-		screen: NewGroup,
-	},
-	notifications: {
-		screen: Notifications,
-	},
-});
+	{
+		initialRouteName: 'splash'
+	}
+);
 
 export default RootNavigator;

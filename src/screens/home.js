@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import {
     StyleSheet, View,TouchableOpacity, Text, TextInput, ImageBackground, 
-    Image, DeviceEventEmitter, BackHandler, Alert, FlatList, Modal
+    Image, DeviceEventEmitter, BackHandler, Alert, FlatList, Modal, ListView
 } from 'react-native';
 import RNAudioStreamer from 'react-native-audio-streamer';
 import { firebaseApp }      from '../firebase'
@@ -16,9 +16,10 @@ import {
 export default class Home extends Component {
     constructor(props) {
         super(props);
+        const ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+        
         this.state = {
-            dataSource: [],
-
+			dataSource: ds.cloneWithRows([]),
             isPlaying: false,
 			playingRow: undefined,
 			isAllPlaying: false,
@@ -147,7 +148,7 @@ export default class Home extends Component {
         RNAudioStreamer.pause();
     }
     
-    renderRow = (row) => {
+    renderRow(row){
         let item = row.item;
         let rowId = row.index;
         return(
@@ -375,13 +376,19 @@ export default class Home extends Component {
 					<Text style={{}}>{this.state.shoutCount} Shouts</Text>
 				</View>
                 <View style = {{flex: 1, backgroundColor: 'white', paddingHorizontal: 10}}>
+                    
                     <FlatList
-						style = {{zIndex: 0}}
+                        style = {{zIndex: 0}}
                         data={this.state.dataSource}
                         renderItem={this.renderRow}
                         extraData={this.state}
                         keyExtractor={item => item.postName}
-                    />
+                    /> 
+
+					{/* <ListView
+						dataSource={this.state.dataSource}
+						renderRow={this.renderRow}
+					/> */}
                 </View>
                 <View style = {{backgroundColor:'transparent', flexDirection: 'row', justifyContent:'space-between', paddingHorizontal: 20, alignItems: 'center' , height:50, }}>
                     <TouchableOpacity

@@ -56,12 +56,16 @@ class HomeGroup extends Component {
             promises.push(new Promise((resolve, reject) => {
                 snap.forEach((child) => {
                     let isMyPrivateGroup = false;
+                    
+                    //isMyPrivateGroup = true;
+
                     firebaseApp.database().ref().child('groups').child(child.key).child('privacy').on('value', (snap) => {
                         snap.forEach((child) => {
                             if(child.val().userId == userId)
                                 isMyPrivateGroup = true;
                         })
                     })
+                    
                     
                     if(child.val().privacy == undefined) {
                         allGroups.push({
@@ -78,6 +82,17 @@ class HomeGroup extends Component {
                             thumbLink: child.val().thumbLink,
                             groupCreator: child.val().groupCreator,
                         });
+                        /*
+                        if(child.val().groupName == "Talents"){
+
+                            privateGroups.push({
+                                lastModified: child.val().lastModified,
+                                groupKey: child.key,
+                                groupName: child.val().groupName,
+                                thumbLink: child.val().thumbLink,
+                                groupCreator: child.val().groupCreator,
+                            });
+                        }*/
                     }
                     if(isMyPrivateGroup == true) {
                         allGroups.push({
@@ -150,10 +165,8 @@ class HomeGroup extends Component {
                     publicGroups: publicGroups,
                     privateGroups: privateGroups,
                     domainGroups: domainsGroups,
+                    dataSource: allGroups,
                 })
-                this.setState({
-                    dataSource: this.state.allGroups,
-                });
             })
         })
     }
@@ -177,7 +190,7 @@ class HomeGroup extends Component {
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={{flexDirection:'row', alignItems: 'center', marginLeft: 20}}
+                            style={{flexDirection:'row', alignItems: 'center', marginLeft: 20, display: 'none'}}
                             onPress = {() => {
                                 this.setState({
                                     showGroupFilter: !this.state.showGroupFilter
@@ -290,8 +303,10 @@ class HomeGroup extends Component {
                             <ImageBackground source={require('../images/category.png')} style={{ height: 18, width: 18}}/>
                         </TouchableOpacity>
                     </View>
-                    <GridComponent data={this.state.dataSource} onPress={this.onPressGridCell}>
-                    </GridComponent>
+                    <View style={{marginBottom: 30}}>
+                        <GridComponent data={this.state.dataSource} onPress={this.onPressGridCell}>
+                        </GridComponent>
+                    </View>
                 </View>
 			</View>
 		);

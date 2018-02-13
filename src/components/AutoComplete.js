@@ -1,6 +1,8 @@
 import React from 'react';
-import { TextInput, FlatList, View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { TextInput, FlatList, View, Text, TouchableOpacity, StyleSheet, Platform, } from 'react-native';
 import { AutoGrowTextInput } from 'react-native-auto-grow-textinput';
+import { firebaseApp } 		from '../firebase';
+import Contacts from 'react-native-contacts';
 
 var curIndex = 0;
 class AutoComplete extends React.Component {
@@ -12,15 +14,55 @@ class AutoComplete extends React.Component {
       text: '',
       listVisible: false,
       listDataSource: [],
-			height: 40,
+      height: 40,
     }
   }
 
-  componentDidMount() {
-    this.users = [];
-    for (var i = 0; i < this.props.users.length; i++) {
-      this.users.push(this.props.users[i].name);
-    }
+
+  componentWillMount() {
+    firebaseApp.database().ref('groups/').child(this.props.groupKey).child('privacy').once('value', (snap) => {
+      var promises = [];
+      var allMembers = [];
+      snap.forEach((child) =>{
+          promises.push(new Promise((resolve, reject) => {
+              firebaseApp.database().ref('users/').child(child.val().userId).on('value', (snap) => {
+                  allMembers.push({
+                      email: snap.val().email,
+                      name: snap.val().FullName
+                  })
+                  resolve();
+              })
+          }))
+      })
+      Promise.all(promises).then(() => {
+
+          this.users = [];
+          this.contacts = [];
+          Contacts.getAll((err, contacts) => {
+            if(err === 'denied'){
+              // error
+            } else {
+              //contacts.forEach(contact => {
+                //contact.emailAddresses.forEach(email => {        
+                  if(allMembers.length == 0 ){
+                    firebaseApp.database().ref('users').on('value', (snap) => {
+                      snap.forEach((child) => {
+                          //if(child.val().email == email.email)
+                            this.users.push(child.val().FullName);
+                        })
+                    })
+                  } else {
+                    allMembers.forEach((child) => {
+                      //if(child.email == email.email)
+                        this.users.push(child.name);
+                    })
+                  }
+                //})
+              //});
+            }
+          })
+      })
+    })
   }
 
   _onChangeText = (text) => {
@@ -28,7 +70,7 @@ class AutoComplete extends React.Component {
     this.props.onChangeText(text);
     let index = text.lastIndexOf('@');
     curIndex = index;
-    if (index != -1) {
+    if (index != -1 && this.users.length > 0) {
       if (index == 0 || text[index - 1] == ' ') {
         const key = text.substring(index + 1).toLowerCase();
         const listDataSource = this.users.filter((user) => {
@@ -61,6 +103,7 @@ class AutoComplete extends React.Component {
         text = text.concat(item);
         this.setState({text, listVisible: false});
         this.props.onChangeText(text);
+        this.myTextInput.focus();
       }}>
         <Text style={{ fontSize: 20 }}>{item}</Text>
       </TouchableOpacity>
@@ -79,7 +122,7 @@ class AutoComplete extends React.Component {
 			height
 		  }
     return (
-      <View style={{ justifyContent: 'center', alignSelf: 'center', zIndex: 10, marginBottom: -55,}}>
+      <View style={{ justifyContent: 'center', alignSelf: 'flex-start', zIndex: 10, marginBottom: -55,marginLeft: 60}}>
       {
           this.state.listVisible && 
           <View style={{ backgroundColor: '#F5FCFF', borderColor: 'grey', borderWidth: 1, height: 150 }}>
@@ -93,7 +136,8 @@ class AutoComplete extends React.Component {
         {
           Platform.OS === 'ios' ?
             <AutoGrowTextInput //source={usernameImg}
-              style={[styles.input, newStyle, style={paddingTop: 10}]}
+            ref={(ref)=>{this.myTextInput = ref}}
+              style={[styles.input, newStyle, style={paddingTop: 10, width: this.props.width}]}
               placeholder={'Write a comment...'/*this.props.recording*/}
               placeholderTextColor='grey'
               autoCapitalize={'none'}
@@ -108,7 +152,8 @@ class AutoComplete extends React.Component {
             />
           :
             <TextInput //source={usernameImg}
-              style={[styles.input, newStyle]}
+              ref={(ref)=>{this.myTextInput = ref}}
+              style={[styles.input, newStyle, style={width: this.props.width}]}
               placeholder={'Write a comment...'/*this.props.recording*/}
               placeholderTextColor='grey'
               autoCapitalize={'none'}
@@ -134,7 +179,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     textAlignVertical: 'center',
 		color: 'black',
-		width: 220,
 		height: 40,
 		borderRadius: 20,
 	},

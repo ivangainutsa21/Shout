@@ -109,6 +109,8 @@ class Splash extends Component {
         		this.props.navigation.dispatch(resetLogin);
 			}
 		});
+		
+		//this.props.navigation.dispatch(resetLogin);
 	}
 
 	render() {
